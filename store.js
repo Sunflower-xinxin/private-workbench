@@ -511,9 +511,11 @@ const assetDB = {
 const photos = {
   available: () => assetDB.available(),
   async add(ownerKey, file) {
-    const blob = await downscale(file, 1920, 0.88);
+    /* 原文件作为预览/备份源永久保存；列表只读取单独生成的轻量缩略图。
+     * 旧版本已经压缩过的历史图片无法反向恢复，此处只保证新导入不再降质。 */
+    const blob = file;
     const thumb = await downscale(file, 480, 0.8);
-    const rec = { id: uid(), ownerKey, blob, thumb, type: 'image/jpeg', name: file.name || '', ts: Date.now() };
+    const rec = { id: uid(), ownerKey, blob, thumb, type: file.type || 'application/octet-stream', name: file.name || '', ts: Date.now() };
     await assetDB.action('photos', 'readwrite', 'put', rec);
     cloud.queueAsset(rec.id, 'photo');
     if (cloud.signedIn()) cloud.flushAssets().catch(() => {});

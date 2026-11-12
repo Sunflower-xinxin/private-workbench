@@ -148,6 +148,76 @@ async function run() {
       !!(v && img && img.src && D.getElementById('vcount').textContent === '3 / 8'));
     return;
   }
+  if (kase === 'global') {
+    const one = await mk(900, 1200, '#6D7FA3', '#B7C5DF');
+    const two = await mk(1200, 800, '#A36D82', '#E0B8C7');
+    const p1 = await S.photos.add('job_global_preview', one);
+    const p2 = await S.photos.add('job_global_preview', two);
+    const job = S.save('job', { tab: '简历', title: '全局预览测试', images: [p1, p2] }).item;
+    W.location.hash = '#/edit/job/' + job.id; await wait(900);
+    const first = D.querySelector('.ph[data-pid="' + p1 + '"]');
+    first.click(); await wait(1200);
+    const jobViewer = D.getElementById('viewer');
+    const jobLoaded = !!(jobViewer && jobViewer.querySelector('img[data-vindex="0"]').src && D.getElementById('vcount').textContent === '1 / 2');
+    W.closeViewer();
+    const prompt = S.save('prompt', { ptype: 'Prompt', title: '素材预览测试', images: [p2] }).item;
+    W.location.hash = '#/edit/prompt/' + prompt.id; await wait(900);
+    D.querySelector('.ph[data-pid="' + p2 + '"]').click(); await wait(1200);
+    const promptViewer = D.getElementById('viewer');
+    const promptLoaded = !!(promptViewer && promptViewer.querySelector('img[data-vindex="0"]').src);
+    report('global | 找工作=' + jobLoaded + ' | Prompt=' + promptLoaded + ' | 共用查看器=' + !!promptViewer,
+      jobLoaded && promptLoaded && !!promptViewer);
+    return;
+  }
+  if (kase === 'fileviewer') {
+    const original = await mk(1100, 700, '#5B8E7D', '#D2E6DF');
+    const ref = await S.files.add('english_file_preview', original);
+    const reading = S.save('english', { subtype: 'reading', title: '图片附件预览测试', files: [ref] }, 'english_reading').item;
+    W.location.hash = '#/edit/english/' + reading.id + '/reading'; await wait(900);
+    const btn = Array.from(D.querySelectorAll('button')).find(x => x.textContent === '预览原图');
+    if (btn) btn.click(); await wait(1200);
+    const img = D.querySelector('#viewer img[data-vindex="0"]');
+    report('fileviewer | 英语图片附件按钮=' + !!btn + ' | 原文件已加载=' + !!(img && img.src), !!(btn && img && img.src));
+    return;
+  }
+  if (kase === 'original') {
+    const original = await mk(2400, 1600, '#314A67', '#D7E2EE');
+    const pid = await S.photos.add('original_quality', original);
+    const stored = await S.photos.get(pid);
+    W.openImageViewer([{ kind: 'photo', id: pid }], 0); await wait(900);
+    const img = D.querySelector('#viewer img[data-vindex="0"]');
+    report('original | 上传=' + original.size + 'B | 保存=' + (stored && stored.blob && stored.blob.size) + 'B | 预览=' + (img && img.naturalWidth) + '×' + (img && img.naturalHeight),
+      !!(stored && stored.blob && stored.blob.size === original.size && stored.blob.type === original.type && stored.thumb.size < stored.blob.size && img && img.naturalWidth === 2400 && img.naturalHeight === 1600));
+    return;
+  }
+  if (kase === 'error') {
+    W.openImageViewer([{ kind: 'photo', id: 'missing_photo_for_test' }], 0); await wait(700);
+    const error = D.querySelector('#viewer .v-error');
+    const loading = D.querySelector('#viewer .v-loading');
+    report('error | 错误提示=' + !!(error && !error.hidden) + ' | 加载提示已结束=' + !!(loading && loading.hidden),
+      !!(error && !error.hidden && loading && loading.hidden));
+    return;
+  }
+  if (kase === 'wheel') {
+    goAlbum(rec.id); await wait(1200);
+    W.openViewer(0); await wait(1200);
+    const strip = D.getElementById('vstrip');
+    strip.dispatchEvent(new W.WheelEvent('wheel', { deltaY: -420, clientX: 196, clientY: 420, bubbles: true, cancelable: true }));
+    await wait(200);
+    const tf = D.querySelector('#viewer img[data-vindex="0"]').style.transform || '';
+    const scale = parseFloat((tf.match(/scale\(([\d.]+)\)/) || [])[1]);
+    report('wheel | scale=' + scale, scale > 1.5);
+    return;
+  }
+  if (kase === 'close') {
+    goAlbum(rec.id); await wait(1800);
+    const view = D.getElementById('view'); view.scrollTop = Math.min(260, view.scrollHeight - view.clientHeight);
+    const before = view.scrollTop;
+    W.openViewer(2); await wait(900); W.closeViewer(); await wait(100);
+    report('close | 滚动位置 ' + before + ' → ' + view.scrollTop + ' | 查看器已关闭=' + !D.getElementById('viewer'),
+      Math.abs(view.scrollTop - before) < 2 && !D.getElementById('viewer'));
+    return;
+  }
   if (kase === 'zoom') {
     goAlbum(rec.id); await wait(1200);
     W.openViewer(1); await wait(2200);

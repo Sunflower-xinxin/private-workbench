@@ -338,7 +338,7 @@ async function outfitAddPhotos(input) {
 function outfitDeletePhoto(pid) {
   const style = OUT && S.get('outfit', OUT.id); if (!style) return;
   confirmDanger('删除这张图片？', '只会从当前风格删除。', '删除', () => {
-    style.images = (style.images || []).filter(id => id !== pid); S.save('outfit', style); S.photos.remove(pid).catch(() => {}); render();
+    style.images = (style.images || []).filter(id => id !== pid); S.save('outfit', style); S.photos.remove(pid).catch(() => {}); discardImageCache('photo', pid); render();
   });
 }
 function afterOutfitRender() {
@@ -436,8 +436,8 @@ function pgTravel() {
     body = list.length ? `<div class="falls">${list.map(v => {
       const h = 130 + (String(v.id).charCodeAt(3) % 60);
       const cover = v.coverPhotoId || (v.images || [])[0] || '';
-      return `<div class="fall" data-cover="${cover}" style="height:${h}px;background:linear-gradient(135deg,#A8C8D8,#7C9EB0)" onclick="go('/album/${v.id}')">
-        <div><div style="font-size:14px">${esc(v.destination || '（无目的地）')}</div><div style="font-weight:400;opacity:.85;margin-top:2px">${esc(v.date || '')} · 照片 ${(v.images || []).length} 张</div></div></div>`;
+      return `<div class="fall" data-cover="${cover}" style="height:${h}px;background:linear-gradient(135deg,#A8C8D8,#7C9EB0)" onclick="travelCoverPreview('${v.id}')" aria-label="预览 ${esc(v.destination || '地点')} 封面原图">
+        <div class="fall-open" onclick="event.stopPropagation();go('/album/${v.id}')"><div style="font-size:14px">${esc(v.destination || '（无目的地）')}</div><div style="font-weight:400;opacity:.85;margin-top:2px">${esc(v.date || '')} · 照片 ${(v.images || []).length} 张 · 进入相册 ›</div></div></div>`;
     }).join('')}</div>` : `<div class="empty"><div class="e-ico">${ICONS.travel}</div><p>记录去过的地方<br>照片不限数量，双列展示</p></div>`;
   } else {
     body = list.length ? `<div class="group">${list.map(v => {
@@ -454,6 +454,13 @@ function pgTravel() {
   ${body}
   <button class="fab" onclick="go('/edit/travel/new/${ui.trTab}')">${ICONS.plus}</button></div>`;
 }
+function travelCoverPreview(id) {
+  const rec = S.get('travel', id); if (!rec) return;
+  const cover = rec.coverPhotoId || (rec.images || [])[0];
+  if (!cover) { go('/album/' + id); return; }
+  const ids = [cover].concat((rec.images || []).filter(pid => pid !== cover));
+  openImageViewer(ids.map(pid => ({ kind: 'photo', id: pid })), 0);
+}
 function afterTravelRender() {
   document.querySelectorAll('.fall[data-cover]').forEach(cell => {
     const pid = cell.dataset.cover; if (!pid) return;
@@ -469,12 +476,17 @@ function afterTravelRender() {
 /* =====================================================================
  * 旅行相册 v0.3 —— 「去过的地方」照片详情页
  * 流程：地点列表(/m/travel) → 相册页(/album/:id，双列瀑布流) → 全屏查看器
- * 数据：照片 Blob 存 IndexedDB（缩略图 360px + 原图 1280px 独立副本），
+ * 数据：照片 Blob 存 IndexedDB（轻量缩略图 + 上传原文件独立副本），
  *       记录里只存 photoId 数组，与地点 ID 一一关联，地点间天然隔离。
  * ===================================================================== */
 let ALB = null;            // 当前相册会话 { id, edit, sel:Set, order:[] }
-const fullURLCache = {};   // pid -> objectURL（查看器原图，独立于缩略图缓存）
+const fullURLCache = {};   // "photo:id" / "file:id" -> 原图 objectURL
 let DRAG_GUARD = false;
+function discardImageCache(kind, id) {
+  if (kind === 'photo' && photoURLCache[id]) { try { URL.revokeObjectURL(photoURLCache[id]); } catch (_) {} delete photoURLCache[id]; }
+  const key = kind + ':' + id;
+  if (fullURLCache[key]) { try { URL.revokeObjectURL(fullURLCache[key]); } catch (_) {} delete fullURLCache[key]; }
+}
 
 function pgAlbum(id) {
   const rec = id ? S.get('travel', id) : null;
@@ -560,9 +572,7 @@ function albumDeleteSel() {
     persistTravelAlbum(rec);
     if (S.photos.available()) del.forEach(pid => {
       S.photos.remove(pid).catch(() => {});
-      [photoURLCache, fullURLCache].forEach(cache => {
-        if (cache[pid]) { try { URL.revokeObjectURL(cache[pid]); } catch (e) {} delete cache[pid]; }
-      });
+      discardImageCache('photo', pid);
     });
     ALB.sel.clear(); ALB.edit = false;
     render();
@@ -594,7 +604,7 @@ async function albumUploadCover(input) {
   try {
     const oldStandalone = rec.coverPhotoId && !(rec.images || []).includes(rec.coverPhotoId) ? rec.coverPhotoId : '';
     rec.coverPhotoId = await S.photos.add('travel_cover_' + rec.id, file);
-    persistTravelAlbum(rec); if (oldStandalone) S.photos.remove(oldStandalone).catch(() => {});
+    persistTravelAlbum(rec); if (oldStandalone) { S.photos.remove(oldStandalone).catch(() => {}); discardImageCache('photo', oldStandalone); }
     toast('新封面已保存，地点原照片未改动');
   } catch (_) { toast('封面上传失败，请检查网络后重试'); }
 }
@@ -715,32 +725,46 @@ function bindSortable(container, onSave) {
 }
 
 /* =====================================================================
- * 全屏查看器：左右滑动切换 · 双指缩放 · 双击放大 · 点空白返回相册
- * Pointer Events 统一处理鼠标与触摸；strip 横向平移翻页，img 变换缩放平移
+ * 全局图片查看器：所有模块共用同一套原图加载、切换、缩放与错误状态。
+ * source.kind=photo 从图片库取原图；source.kind=file 从通用附件库取原文件。
+ * Pointer Events 同时覆盖触摸与鼠标，wheel 为桌面端提供光标中心缩放。
  * ===================================================================== */
-const VIEWER = { open: false, idx: 0, list: [], scale: 1, tx: 0, ty: 0, scrollTop: 0 };
+const VIEWER = { open: false, idx: 0, list: [], scale: 1, tx: 0, ty: 0, scrollTop: 0, trigger: null };
 let VG = null;   // 当前手势 { t:'drag'|'pinch', ... }
 
 function openViewer(idx) {
   if (!ALB || !ALB.order.length) return;
+  openImageViewer(ALB.order.map(id => ({ kind: 'photo', id })), idx);
+}
+function imageFileRef(ref) {
+  return !!(ref && (/^image\//i.test(ref.type || '') || /\.(avif|bmp|gif|heic|heif|jpe?g|png|webp)$/i.test(ref.name || '')));
+}
+function openImageViewer(sources, idx) {
+  const list = (sources || []).map(source => {
+    if (typeof source === 'string') return { kind: 'photo', id: source };
+    if (!source || !source.id || !['photo', 'file'].includes(source.kind)) return null;
+    return { kind: source.kind, id: String(source.id), ref: source.ref || source, name: source.name || (source.ref && source.ref.name) || '' };
+  }).filter(Boolean);
+  if (!list.length) { toast('没有可预览的图片'); return; }
   closeViewer();
   VIEWER.open = true;
+  VIEWER.trigger = document.activeElement;
   VIEWER.scrollTop = view.scrollTop;
-  VIEWER.list = ALB.order.slice();
+  VIEWER.list = list;
   VIEWER.idx = Math.max(0, Math.min(idx, VIEWER.list.length - 1));
   VIEWER.scale = 1; VIEWER.tx = 0; VIEWER.ty = 0;
   const el = document.createElement('div');
-  el.id = 'viewer'; el.className = 'viewer';
+  el.id = 'viewer'; el.className = 'viewer'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '图片预览');
   el.innerHTML = `
     <div class="v-top">
-      <button class="v-btn" id="vclose" title="返回相册">${ICONS.close}</button>
+      <button class="v-btn" id="vclose" title="关闭预览" aria-label="关闭预览">${ICONS.close}</button>
       <span class="v-count" id="vcount"></span>
       <span style="width:36px"></span>
     </div>
-    <div class="v-strip" id="vstrip"><div class="v-track" id="vtrack">${VIEWER.list.map((pid, i) => `<div class="v-page"><img data-pid="${pid}" alt="照片 ${i + 1}" draggable="false"><div class="v-error" hidden>图片加载失败<br><small>请检查网络或重新上传</small></div></div>`).join('')}</div></div>
+    <div class="v-strip" id="vstrip"><div class="v-track" id="vtrack">${VIEWER.list.map((source, i) => `<div class="v-page"><img data-vindex="${i}" alt="${esc(source.name || '图片 ' + (i + 1))}" draggable="false" hidden><div class="v-loading">正在加载原图…</div><div class="v-error" hidden>图片加载失败<br><small>文件可能已被删除、损坏或格式不受支持</small></div></div>`).join('')}</div></div>
     <button class="v-nav v-prev" id="vprev" title="上一张">${ICONS.chev}</button>
     <button class="v-nav v-next" id="vnext" title="下一张">${ICONS.chev}</button>
-    <div class="v-hint">左右滑动切换 · 双指缩放 · 双击放大</div>`;
+    <div class="v-hint">左右滑动切换 · 双指或滚轮缩放 · 双击放大</div>`;
   document.getElementById('phone').appendChild(el);
   document.getElementById('vclose').onclick = closeViewer;
   document.getElementById('vprev').onclick = () => viewerStep(-1);
@@ -751,7 +775,11 @@ function openViewer(idx) {
 function closeViewer() {
   const el = document.getElementById('viewer');
   if (el) el.remove();
-  if (VIEWER.open) { VIEWER.open = false; VIEWER.list = []; VG = null; view.scrollTop = VIEWER.scrollTop; }
+  if (VIEWER.open) {
+    const trigger = VIEWER.trigger;
+    VIEWER.open = false; VIEWER.list = []; VIEWER.trigger = null; VG = null; view.scrollTop = VIEWER.scrollTop;
+    if (trigger && trigger.isConnected && typeof trigger.focus === 'function') trigger.focus({ preventScroll: true });
+  }
   window.removeEventListener('keydown', viewerKeys);
 }
 function viewerStep(dir) {
@@ -768,6 +796,7 @@ function viewerApply(instant) {
   track.style.transform = 'translate3d(' + (-VIEWER.idx * strip.clientWidth) + 'px,0,0)';
   const imgs = track.querySelectorAll('img');
   const cur = imgs[VIEWER.idx];
+  strip.classList.toggle('is-zoomed', VIEWER.scale > 1);
   if (cur) {
     cur.classList.toggle('zoomable', !instant);   // 手势进行中禁用过渡，松手后平滑归位
     cur.style.transform = 'translate(' + VIEWER.tx + 'px,' + VIEWER.ty + 'px) scale(' + VIEWER.scale + ')';
@@ -783,20 +812,29 @@ function viewerApply(instant) {
   if (next) next.disabled = VIEWER.idx === VIEWER.list.length - 1;
 }
 function viewerLoadImg(img) {
-  const pid = img && img.dataset.pid;
-  if (!pid || img.dataset.loaded === '1') return;
+  const index = Number(img && img.dataset.vindex), source = VIEWER.list[index];
+  if (!source || img.dataset.loaded === '1' || img.dataset.loaded === 'loading') return;
+  const loading = img.parentElement && img.parentElement.querySelector('.v-loading');
   const fail = () => {
     img.dataset.loaded = 'error'; img.hidden = true;
+    if (loading) loading.hidden = true;
     const error = img.parentElement && img.parentElement.querySelector('.v-error'); if (error) error.hidden = false;
   };
-  img.onload = () => { img.dataset.loaded = '1'; img.hidden = false; const error = img.parentElement.querySelector('.v-error'); if (error) error.hidden = true; };
+  img.dataset.loaded = 'loading';
+  img.onload = () => {
+    img.dataset.loaded = '1'; img.hidden = false; if (loading) loading.hidden = true;
+    const error = img.parentElement && img.parentElement.querySelector('.v-error'); if (error) error.hidden = true;
+    if (img.isConnected && index === VIEWER.idx) { viewerClampPan(); viewerApply(true); }
+  };
   img.onerror = fail;
-  if (fullURLCache[pid]) { img.src = fullURLCache[pid]; return; }
-  if (!S.photos.available()) { fail(); return; }
-  S.photos.get(pid).then(rec => {
+  const cacheKey = source.kind + ':' + source.id;
+  if (fullURLCache[cacheKey]) { img.src = fullURLCache[cacheKey]; return; }
+  const api = source.kind === 'file' ? S.files : S.photos;
+  if (!api.available()) { fail(); return; }
+  api.get(source.kind === 'file' ? source.ref : source.id).then(rec => {
     if (!rec || !rec.blob) { fail(); return; }
     const url = URL.createObjectURL(rec.blob);
-    fullURLCache[pid] = url;
+    fullURLCache[cacheKey] = url;
     if (img.isConnected) img.src = url;
   }).catch(fail);
 }
@@ -884,6 +922,11 @@ function bindViewerGestures() {
     if (ptrs.has(e.pointerId)) ptrs.delete(e.pointerId);
     if (!ptrs.size) { VG = null; viewerApply(); }
   });
+  strip.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = Math.exp(-e.deltaY * 0.002);
+    viewerScaleAt(Math.min(5, Math.max(1, VIEWER.scale * factor)), e.clientX, e.clientY, true);
+  }, { passive: false });
   window.addEventListener('keydown', viewerKeys);
 }
 function viewerMid(a, b, strip) {
@@ -897,17 +940,22 @@ function viewerKeys(e) {
   else if (e.key === 'Escape') closeViewer();
 }
 function viewerZoomTo(cx, cy) {
+  viewerScaleAt(VIEWER.scale > 1 ? 1 : 2.5, cx, cy, false);
+}
+function viewerScaleAt(nextScale, cx, cy, instant) {
   const strip = document.getElementById('vstrip');
   if (!strip) return;
   const r = strip.getBoundingClientRect();
   const mx = cx - r.left - r.width / 2, my = cy - r.top - r.height / 2;
-  if (VIEWER.scale > 1) { VIEWER.scale = 1; VIEWER.tx = 0; VIEWER.ty = 0; }
+  const old = VIEWER.scale || 1;
+  if (nextScale <= 1.001) { VIEWER.scale = 1; VIEWER.tx = 0; VIEWER.ty = 0; }
   else {
-    const s = 2.5;
-    VIEWER.scale = s;
-    VIEWER.tx = mx * (1 - s); VIEWER.ty = my * (1 - s);   // 保持点击点不动
+    VIEWER.scale = nextScale;
+    VIEWER.tx = mx - (mx - VIEWER.tx) * nextScale / old;
+    VIEWER.ty = my - (my - VIEWER.ty) * nextScale / old;
+    viewerClampPan();
   }
-  viewerApply();
+  viewerApply(!!instant);
 }
 function viewerClampPan() {
   if (VIEWER.scale <= 1) { VIEWER.tx = 0; VIEWER.ty = 0; return; }
@@ -916,7 +964,7 @@ function viewerClampPan() {
   const img = strip.querySelectorAll('img')[VIEWER.idx];
   if (!img || !img.naturalWidth) return;
   const r = strip.getBoundingClientRect();
-  const fit = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+  const fit = Math.min(1, r.width / img.naturalWidth, r.height / img.naturalHeight);
   const limX = Math.max(0, (img.naturalWidth * fit * VIEWER.scale - r.width) / 2);
   const limY = Math.max(0, (img.naturalHeight * fit * VIEWER.scale - r.height) / 2);
   VIEWER.tx = Math.max(-limX, Math.min(limX, VIEWER.tx));
@@ -1039,9 +1087,9 @@ function renderField(f, v) {
     case 'images': {
       const arr = Array.isArray(v) ? v : [];
       return `<div class="field">${L}<div class="imgrow" id="imgs_${f.k}">
-        ${arr.map((pid, i) => `<div class="ph" data-pid="${pid}">
+        ${arr.map((pid, i) => `<div class="ph" data-pid="${pid}" role="button" tabindex="0" aria-label="预览图片 ${i + 1}" onclick="edImgPreview('${f.k}',${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();edImgPreview('${f.k}',${i})}">
           <img alt="图片 ${i + 1}" loading="lazy">
-          <div class="ph-ops"><span onclick="edImgMove('${f.k}',${i},-1)">‹</span><span onclick="edImgMove('${f.k}',${i},1)">›</span><span onclick="edImgDel('${f.k}',${i})">✕</span></div>
+          <div class="ph-ops" onclick="event.stopPropagation()"><span onclick="edImgMove('${f.k}',${i},-1)">‹</span><span onclick="edImgMove('${f.k}',${i},1)">›</span><span onclick="edImgDel('${f.k}',${i})">✕</span></div>
         </div>`).join('')}
         <div class="imgadd" onclick="document.getElementById('file_${f.k}').click()">${ICONS.cam}<span>添加图片</span></div>
       </div>
@@ -1052,10 +1100,10 @@ function renderField(f, v) {
       const arr = Array.isArray(v) ? v : [];
       return `<div class="field">${L}<div class="group">${arr.map((ref, i) => `<div class="row">
         <div class="r-main"><div class="r-title" style="font-size:15px">${esc(ref.name || '附件')}</div><div class="r-sub">${esc(ref.type || '文件')}${ref.size ? ' · ' + Math.max(1, Math.round(ref.size / 1024)) + ' KB' : ''}</div></div>
-        <button class="ab-btn" onclick="edFileOpen('${f.k}',${i})">查看</button><button class="ab-btn danger" onclick="edFileDel('${f.k}',${i})">删除</button></div>`).join('')}</div>
+        <button class="ab-btn" onclick="edFileOpen('${f.k}',${i})">${imageFileRef(ref) ? '预览原图' : '查看'}</button><button class="ab-btn danger" onclick="edFileDel('${f.k}',${i})">删除</button></div>`).join('')}</div>
         <button class="chip" style="margin-top:8px" onclick="document.getElementById('asset_${f.k}').click()">＋ 添加附件</button>
         <input type="file" id="asset_${f.k}" accept="${esc(f.accept || '*/*')}" multiple style="display:none" onchange="edFileAdd('${f.k}',this)">
-        <p class="sub" style="font-size:12px;margin-top:6px">可一次选择多个文件；登录后附件会同步到云端。</p></div>`;
+        <p class="sub" style="font-size:12px;margin-top:6px">可一次选择多个文件；内容保存在本机，图片附件会使用统一原图预览。</p></div>`;
     }
     default:
       return '';
@@ -1111,11 +1159,15 @@ function edImgMove(k, i, dir) {
   [arr[i], arr[j]] = [arr[j], arr[i]];
   rerenderEditor(); markDirty();
 }
+function edImgPreview(k, i) {
+  const ids = (ED && Array.isArray(ED.values[k])) ? ED.values[k] : [];
+  openImageViewer(ids.map(id => ({ kind: 'photo', id })), i);
+}
 function edImgDel(k, i) {
   const arr = ED.values[k] || [];
   const [pid] = arr.splice(i, 1);
   if (S.photos.available()) S.photos.remove(pid).catch(() => {});
-  delete photoURLCache[pid];
+  discardImageCache('photo', pid);
   rerenderEditor(); markDirty();
 }
 async function edFileAdd(k, input) {
@@ -1136,11 +1188,18 @@ function edFileDel(k, i) {
   const arr = ED.values[k] || [];
   const ref = arr.splice(i, 1)[0];
   if (ref) S.files.remove(ref).catch(() => {});
+  if (ref) discardImageCache('file', ref.id);
   rerenderEditor(); markDirty();
 }
 async function edFileOpen(k, i) {
   const ref = (ED.values[k] || [])[i];
   if (!ref) return;
+  if (imageFileRef(ref)) {
+    const images = (ED.values[k] || []).filter(imageFileRef);
+    const imageIndex = Math.max(0, images.findIndex(item => item.id === ref.id));
+    openImageViewer(images.map(item => ({ kind: 'file', id: item.id, ref: item, name: item.name })), imageIndex);
+    return;
+  }
   try {
     const rec = await S.files.get(ref);
     if (!rec || !rec.blob) throw new Error('missing');
@@ -1216,6 +1275,8 @@ function edDelete() {
     pendingPhotoCleanup = setTimeout(() => {
       if (S.photos.available()) S.photos.removeMany(imgs);
       if (S.files.available()) S.files.removeMany(attachments);
+      imgs.forEach(id => discardImageCache('photo', id));
+      attachments.forEach(ref => discardImageCache('file', typeof ref === 'string' ? ref : ref && ref.id));
     }, 6000);
     S.clearDraft(module, ED.draftKey);
     go(module === 'travel' ? '/m/travel' : '/m/' + module);

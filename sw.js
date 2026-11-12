@@ -2,7 +2,7 @@
  * 策略：外壳缓存优先（App Shell 离线可用），静态资源网络优先 + 失败回退缓存。
  * 应用用 hash 路由，所有页面都走 index.html，离线只需缓存 shell 即可整站可用。
  */
-const CACHE = 'pw-shell-v5';
+const CACHE = 'pw-shell-v6';
 const SHELL = [
   './',
   './index.html',
