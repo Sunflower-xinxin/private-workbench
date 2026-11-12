@@ -2,8 +2,12 @@
 const { spawn } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
 const URL = process.argv[2];
+const CHROME = process.env.CHROME_PATH || (process.platform === 'darwin'
+  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  : process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/google-chrome');
+if (!fs.existsSync(CHROME)) { console.log('SKIP: Chrome 未安装，可通过 CHROME_PATH 指定'); process.exit(0); }
 const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'chk2-'));
-const p = spawn('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+const p = spawn(CHROME,
   ['--headless=new', '--disable-gpu', '--no-first-run', '--user-data-dir=' + prof,
    '--remote-debugging-port=0', 'about:blank'],
   { stdio: ['ignore', 'ignore', 'pipe'] });

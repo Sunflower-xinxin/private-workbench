@@ -3,7 +3,7 @@
  * 用法：node tests/icon.mjs <源图URL> <输出.png>
  * ===================================================================== */
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -11,7 +11,10 @@ const url = process.argv[2];
 const outPath = process.argv[3] || 'apple-touch-icon.png';
 if (!url) { console.error('用法: node icon.mjs <图片URL> <输出.png>'); process.exit(2); }
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME = process.env.CHROME_PATH || (process.platform === 'darwin'
+  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  : process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/google-chrome');
+if (!existsSync(CHROME)) { console.log('SKIP: Chrome 未安装，可通过 CHROME_PATH 指定'); process.exit(0); }
 const profile = mkdtempSync(join(tmpdir(), 'icon-prof-'));
 const proc = spawn(CHROME, [
   '--headless=new', '--disable-gpu', '--no-first-run', '--window-size=500,500',

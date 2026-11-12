@@ -26,6 +26,7 @@ globalThis.localStorage = makeLS();
 const code = readFileSync(join(__dir, '..', 'store.js'), 'utf8');
 new Function(code)();
 const S = globalThis.PWStore;
+S.migrate();
 S.seed(); // 模拟 App 启动初始化（幂等）
 
 /* ---------- 测试框架 ---------- */
@@ -44,9 +45,10 @@ console.log('== 私人工作台 · 数据层验收测试 ==\n');
 console.log('[A] 表单配置独立性与完整性');
 t('A1 每个模块拥有独立 FORMS 配置（无跨模块复用）', () => {
   const keys = Object.keys(S.FORMS);
-  ok(keys.length >= 11, '应包含 10 模块 + travel 子表单，实际 ' + keys.length);
-  ['books', 'english', 'movies', 'outfit', 'job', 'prompt', 'life', 'notes', 'period', 'travel_gone', 'travel_want']
+  ok(keys.length >= 13, '应包含 8 个现役空间及英语/旅行子表单，实际 ' + keys.length);
+  ['books', 'english', 'english_listening', 'english_speaking', 'english_reading', 'english_writing', 'movies', 'outfit', 'job', 'prompt', 'life', 'travel_gone', 'travel_want']
     .forEach(k => ok(S.FORMS[k], '缺少表单配置: ' + k));
+  ok(!S.FORMS.notes && !S.FORMS.period, '随笔/经期表单应已移除');
 });
 t('A2 英语表单≠书籍表单，且含 单词/词性/翻译/例句/场景', () => {
   const en = S.FORMS.english.fields.map(f => f.k);
@@ -62,12 +64,20 @@ t('A3 电影表单含 名称/导演/类型/年份/状态/评分/观后感/标签
   eq(S.FORMS.movies.fields.find(f => f.k === 'status').options.join(','), '想看,在看,已看', '观看状态选项');
   eq(S.FORMS.movies.fields.find(f => f.k === 'rating').type, 'rating', '评分字段类型');
 });
-t('A4 穿搭表单含 单品/搭配类型 + 上衣/下装/鞋/配饰/场合/图片/链接/自定义/备注', () => {
+t('A4 穿搭表单是图片优先的风格 Moodboard', () => {
   const of = S.FORMS.outfit.fields.map(f => f.k);
-  ['otype', 'style', 'top', 'bottom', 'shoes', 'accessories', 'occasion', 'images', 'link', 'custom', 'note', 'tags'].forEach(k => ok(of.includes(k), '穿搭表单缺少 ' + k));
-  eq(S.FORMS.outfit.fields.find(f => f.k === 'otype').options.join(','), '服饰单品,完整搭配', '穿搭记录类型');
+  eq(of.join(','), 'name,images', '穿搭不应保留文字搭配表单');
 });
-t('A5 旅行拥有两套独立表单（去过/想去），字段互不混用', () => {
+t('A5 英语听说读写使用四套独立业务表单', () => {
+  const expected = {
+    english_listening: ['title', 'audioLink', 'files', 'transcript', 'notes'],
+    english_speaking: ['topic', 'files', 'record', 'notes'],
+    english_reading: ['title', 'link', 'article', 'notes', 'vocabulary', 'files'],
+    english_writing: ['prompt', 'body', 'versions', 'comments', 'notes', 'files']
+  };
+  Object.entries(expected).forEach(([key, fields]) => eq(S.FORMS[key].fields.map(f => f.k).join(','), fields.join(','), key));
+});
+t('A6 旅行拥有两套独立表单（去过/想去），字段互不混用', () => {
   const gone = S.FORMS.travel_gone.fields.map(f => f.k);
   const want = S.FORMS.travel_want.fields.map(f => f.k);
   ['destination', 'date', 'images', 'note'].forEach(k => ok(gone.includes(k), '去过表单缺少 ' + k));
@@ -110,7 +120,8 @@ t('B6 完全空白的表单不创建记录（全部模块逐一验证）', () =>
   const cases = [
     ['books', {}, 'books'], ['english', {}, 'english'], ['movies', {}, 'movies'],
     ['outfit', {}, 'outfit'], ['job', {}, 'job'], ['prompt', {}, 'prompt'],
-    ['life', {}, 'life'], ['notes', {}, 'notes'], ['period', {}, 'period'],
+    ['life', {}, 'life'], ['english', {}, 'english_listening'], ['english', {}, 'english_speaking'],
+    ['english', {}, 'english_reading'], ['english', {}, 'english_writing'],
     ['travel', {}, 'travel_gone'], ['travel', {}, 'travel_want']
   ];
   cases.forEach(([m, v, fk]) => {
@@ -152,7 +163,7 @@ t('C2 编辑后正确保存：createdAt 不变、updatedAt 更新、其他字段
   ok(got.updatedAt >= got.createdAt, 'updatedAt 异常');
 });
 t('C3 穿搭图片顺序调整后正确持久化', () => {
-  const r = S.save('outfit', { images: ['p1', 'p2', 'p3'], style: '极简通勤' });
+  const r = S.save('outfit', { images: ['p1', 'p2', 'p3'], name: 'Minimalism' });
   const arr = S.get('outfit', r.item.id).images;
   [arr[0], arr[1]] = [arr[1], arr[0]];
   S.save('outfit', { id: r.item.id, images: arr });
@@ -162,12 +173,12 @@ t('C3 穿搭图片顺序调整后正确持久化', () => {
 /* ---------- D. 删除与隔离（验收 ⑦⑨） ---------- */
 console.log('\n[D] 删除与模块隔离');
 t('D1 删除正常且可撤销恢复', () => {
-  const r = S.save('notes', { content: '待删除的随笔' });
-  const removed = S.remove('notes', r.item.id);
+  const r = S.save('life', { content: '待删除的生活记录' });
+  const removed = S.remove('life', r.item.id);
   ok(removed, '删除未返回被删记录');
-  eq(S.get('notes', r.item.id), null, '删除后仍可读取');
-  S.restore('notes', removed);
-  ok(S.get('notes', r.item.id), '撤销恢复失败');
+  eq(S.get('life', r.item.id), null, '删除后仍可读取');
+  S.restore('life', removed);
+  ok(S.get('life', r.item.id), '撤销恢复失败');
 });
 t('D2 删除一个模块的记录不影响其他模块', () => {
   const rb = S.save('books', { title: '隔离测试书' });
@@ -180,9 +191,9 @@ t('D2 删除一个模块的记录不影响其他模块', () => {
 });
 t('D3 各模块数据完全隔离存储（独立命名空间）', () => {
   const keys = [];
-  for (let i = 0; i < 100; i++) keys.push('pw_records_' + S.moduleKeys()[i % 10]);
+  for (let i = 0; i < 80; i++) keys.push('pw_records_' + S.moduleKeys()[i % 8]);
   const uniq = new Set(keys);
-  eq(uniq.size, 10, '模块命名空间不独立');
+  eq(uniq.size, 8, '模块命名空间不独立');
   S.moduleKeys().forEach(m => ok(localStorage.getItem('pw_records_' + m) !== null, m + ' 缺少独立存储'));
 });
 t('D4 旅行两套表单写入同一模块但以 ttype 正确区分', () => {
@@ -231,10 +242,10 @@ t('F2 重新加载 store（模拟退出重进）数据不丢失', () => {
   const got = S.list('life').find(x => x.id === r.item.id);
   ok(got && got.title === '持久化验证' && got.content === '重启后应仍存在', '重进后数据丢失');
 });
-t('F3 导出备份包含全部 10 个模块', () => {
+t('F3 导出 v2 备份包含全部 8 个现役模块', () => {
   const parsed = JSON.parse(S.exportAll());
-  eq(parsed.version, 1, '备份缺少版本号');
-  eq(Object.keys(parsed.data).length, 10, '备份未覆盖全部模块');
+  eq(parsed.version, 2, '备份缺少版本号');
+  eq(Object.keys(parsed.data).length, 8, '备份未覆盖全部现役模块');
 });
 t('F4 导入损坏备份：报错且不写入任何数据', () => {
   const before = JSON.stringify(S.list('books'));
@@ -251,10 +262,17 @@ t('F5 导入合法备份：恢复数据且不影响备份外模块', () => {
   const backup = S.exportAll();
   S.remove('books', rb.item.id);
   eq(S.get('books', rb.item.id), null, '删除失败');
-  const noteCount = S.list('notes').length;
+  const lifeCount = S.list('life').length;
   const r = S.importAll(backup);
   ok(S.get('books', rb.item.id), '备份恢复失败');
-  eq(S.list('notes').length, noteCount, '导入影响了其他模块');
+  eq(S.list('life').length, lifeCount, '导入影响了其他模块');
+});
+t('F6 v2 导入兼容旧 v1 JSON，且忽略已移除模块', () => {
+  const old = JSON.stringify({ version: 1, data: { books: [{ id: 'old_book', title: '旧备份书' }], notes: [{ id: 'old_note', content: '不再导入' }] } });
+  const result = S.importAll(old);
+  eq(result.modules, 1, '应只导入现役模块');
+  ok(S.get('books', 'old_book'), 'v1 书籍未导入');
+  eq(S.list('notes').length, 0, '已移除随笔不应恢复到活跃数据');
 });
 
 /* ---------- G. 四模块重点场景（验收 重点） ---------- */
@@ -271,14 +289,18 @@ t('G2 电影：仅填观看状态可保存；状态值限定在枚举内', () =>
   ok(r.ok, '仅状态保存失败');
   ok(['想看', '在看', '已看'].includes(S.get('movies', r.item.id).status), '状态值异常');
 });
-t('G3 穿搭：仅填自定义字段可保存', () => {
-  const r = S.save('outfit', { custom: [{ key: '季节', value: '秋冬' }] });
-  ok(r.ok, '仅自定义字段保存失败');
-  eq(S.get('outfit', r.item.id).custom[0].value, '秋冬', '自定义字段回显错误');
+t('G3 穿搭：风格名称与图片数组独立保存', () => {
+  const r = S.save('outfit', { name: 'Old Money', images: ['look_1'] });
+  ok(r.ok, '风格保存失败');
+  eq(S.get('outfit', r.item.id).images[0], 'look_1', '图片关联回显错误');
 });
-t('G4 穿搭：空自定义字段行不算有效内容', () => {
-  const r = S.save('outfit', { custom: [{ key: '', value: '' }] });
-  ok(!r.ok, '空自定义行不应构成有效内容');
+t('G4 英语四项可部分填写并以 subtype 隔离', () => {
+  const a = S.save('english', { transcript: '只填听力文本' }, 'english_listening');
+  const b = S.save('english', { topic: 'Part 2' }, 'english_speaking');
+  const c = S.save('english', { vocabulary: 'ubiquitous' }, 'english_reading');
+  const d = S.save('english', { comments: '逻辑链待加强' }, 'english_writing');
+  [a, b, c, d].forEach(x => ok(x.ok, '部分字段保存失败'));
+  eq([a.item.subtype, b.item.subtype, c.item.subtype, d.item.subtype].join(','), 'listening,speaking,reading,writing', '子模块归属错误');
 });
 t('G5 旅行(想去)：清单勾选状态持久化', () => {
   const r = S.save('travel', { checklist: [{ text: '订机票', done: false }, { text: '办签证', done: true }] }, 'travel_want');

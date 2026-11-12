@@ -2,10 +2,11 @@
  * 策略：外壳缓存优先（App Shell 离线可用），静态资源网络优先 + 失败回退缓存。
  * 应用用 hash 路由，所有页面都走 index.html，离线只需缓存 shell 即可整站可用。
  */
-const CACHE = 'pw-shell-v1';
+const CACHE = 'pw-shell-v2';
 const SHELL = [
   './',
   './index.html',
+  './config.js',
   './store.js',
   './app.js',
   './manifest.json',
@@ -31,6 +32,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  // Authenticated records/files must never enter the public app-shell cache.
+  if (url.pathname.startsWith('/api/')) return;
 
   // 导航请求 → 网络优先，失败回退缓存的 index.html（离线整站可用）
   if (e.request.mode === 'navigate') {

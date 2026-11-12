@@ -8,15 +8,13 @@ const S = window.PWStore;
 
 /* ---------- 图标与模块元数据 ---------- */
 const ICONS = {
-  book:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>',
+  book:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5.5c2.8-1 5.6-.5 8.5 1.4v13c-2.9-1.9-5.7-2.4-8.5-1.4v-13z"/><path d="M20.5 5.5c-2.8-1-5.6-.5-8.5 1.4v13c2.9-1.9 5.7-2.4 8.5-1.4v-13z"/></svg>',
   english:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3.5 9h17M3.5 15h17M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>',
   movies:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/></svg>',
   outfit:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3L4 7l2.5 2.5L8 8v13h8V8l1.5 1.5L20 7l-5-4a3 3 0 0 1-6 0z"/></svg>',
   job:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7M3 12h18"/></svg>',
   prompt:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>',
   life:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1 2.2h5.2c0-.9.4-1.7 1-2.2A6 6 0 0 0 12 3z"/></svg>',
-  notes:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
-  period:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/><circle cx="12" cy="15.5" r="2.2" fill="currentColor" stroke="none"/></svg>',
   travel:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5c1.8-1.8 1.8-3-1-1L15 10 6.2 8.2l1.5-1.5a10 10 0 0 1 7.8-2.9l3.2-2.1a2.6 2.6 0 0 1 3.6 3.6l-2.1 3.2a10 10 0 0 1-2.9 7.8l.5 2.9z" transform="scale(.85) translate(2,2)"/></svg>',
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V10.5z"/></svg>',
   grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
@@ -42,12 +40,10 @@ const MODULES = [
   { id:'job',     name:'找工作',          en:'求职工作台',      c:'#8FA3BF' },
   { id:'prompt',  name:'Prompt & Skills', en:'提示词 · 技能',   c:'#B49A5E' },
   { id:'life',    name:'生活',            en:'技巧 · 冷知识',   c:'#7FA37A' },
-  { id:'notes',   name:'随笔',            en:'沉浸记录',        c:'#B0A090' },
-  { id:'period',  name:'经期',            en:'周期记录',        c:'#C48A9A' },
   { id:'travel',  name:'旅行',            en:'足迹 · 心愿',     c:'#7C9EB0' }
 ];
 const M = id => MODULES.find(m => m.id === id);
-const iconOf = id => id;
+const iconOf = id => id === 'books' ? 'book' : id;
 
 /* ---------- 通用工具 ---------- */
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -62,12 +58,10 @@ function timeAgo(ts) {
 function titleOf(m, v) {
   switch (m) {
     case 'books': return v.title || '（无书名）';
-    case 'english': return v.word || '（无单词）';
+    case 'english': return v.word || v.title || v.topic || v.prompt || '（无标题）';
     case 'movies': return v.title || '（无片名）';
-    case 'outfit': return [v.style, v.top || v.bottom || v.shoes].filter(Boolean).join(' · ') || '（未命名搭配）';
+    case 'outfit': return v.name || '（未命名风格）';
     case 'job': case 'prompt': case 'life': return v.title || '（无标题）';
-    case 'notes': return (v.content || '').slice(0, 24) || '（空白随笔）';
-    case 'period': return '经期 ' + (v.start || '');
     case 'travel': return v.destination || '（无目的地）';
     default: return '（无标题）';
   }
@@ -75,14 +69,12 @@ function titleOf(m, v) {
 function metaOf(m, v) {
   switch (m) {
     case 'books': return [v.author, v.category].filter(Boolean).join(' · ');
-    case 'english': return [v.pos, v.meaning].filter(Boolean).join(' ');
+    case 'english': return v.subtype ? ({ listening:'听力', speaking:'口语', reading:'阅读', writing:'写作' }[v.subtype] || '') : [v.pos, v.meaning].filter(Boolean).join(' ');
     case 'movies': return [v.director, v.genre, v.year, v.status].filter(Boolean).join(' · ');
-    case 'outfit': return [v.otype, v.occasion].filter(Boolean).join(' · ');
+    case 'outfit': return '灵感图片 ' + (v.images || []).length + ' 张';
     case 'job': return [v.tab, v.kind].filter(Boolean).join(' · ');
     case 'prompt': return [v.ptype, v.category].filter(Boolean).join(' · ');
     case 'life': return [v.category, v.tolearn ? (v.learned ? '待学·已学会' : '待学') : ''].filter(Boolean).join(' · ');
-    case 'notes': return v.mood || '';
-    case 'period': return v.end ? v.start + ' ~ ' + v.end : v.start + ' 起（进行中）';
     case 'travel': return v.ttype === 'want' ? [v.planTime, v.budget].filter(Boolean).join(' · ') : (v.date || '');
     default: return '';
   }
@@ -90,11 +82,10 @@ function metaOf(m, v) {
 function descOf(m, v) {
   switch (m) {
     case 'books': return v.excerpt;
-    case 'english': return v.example;
+    case 'english': return v.example || v.transcript || v.record || v.notes || v.article || v.body;
     case 'movies': return v.rating ? '★'.repeat(v.rating) + (v.review ? ' ' + v.review : '') : v.review;
-    case 'outfit': return [v.top && '上:' + v.top, v.bottom && '下:' + v.bottom, v.shoes && '鞋:' + v.shoes, v.accessories && '饰:' + v.accessories].filter(Boolean).join(' ') || v.note;
+    case 'outfit': return '';
     case 'job': case 'prompt': case 'life': return v.content || v.note;
-    case 'notes': return v.content;
     case 'travel': return v.ttype === 'want'
       ? [v.docs && '证件:' + v.docs, (v.checklist || []).length ? '清单 ' + (v.checklist.filter(x => x.done).length) + '/' + v.checklist.length : ''].filter(Boolean).join(' · ')
       : v.note;
@@ -128,7 +119,7 @@ function head(title, back, right) {
 }
 
 /* ---------- 全局 UI 状态 ---------- */
-const ui = { q: '', chip: {}, modEdit: false, enTab: '词汇', jobTab: '简历', pType: 'Prompt', pCat: '全部', trTab: 'gone', noteView: 'tl' };
+const ui = { q: '', chip: {}, modEdit: false, enTab: '词汇', jobTab: '简历', pType: 'Prompt', pCat: '全部', trTab: 'gone' };
 
 function render() {
   const parts = (location.hash || '#/').slice(1).split('/').filter(Boolean);
@@ -140,23 +131,21 @@ function render() {
   else if (r === 'recent') { tabs('recent'); view.innerHTML = pgRecent(); }
   else if (r === 'settings') { tabs('settings'); view.innerHTML = pgSettings(); }
   else if (r === 'album') { tabs(''); view.innerHTML = pgAlbum(parts[1]); afterAlbumRender(); }
+  else if (r === 'outfit') { tabs(''); view.innerHTML = pgOutfitBoard(parts[1]); afterOutfitRender(); }
   else if (r === 'm') {
     tabs('');
     const id = parts[1];
     if (id === 'english') view.innerHTML = pgEnglish();
+    else if (id === 'outfit') view.innerHTML = pgOutfit();
     else if (id === 'job') view.innerHTML = pgJob();
     else if (id === 'prompt') view.innerHTML = pgPrompt();
-    else if (id === 'notes') view.innerHTML = pgNotes();
-    else if (id === 'period') view.innerHTML = pgPeriod();
-    else if (id === 'travel') view.innerHTML = pgTravel();
+    else if (id === 'travel') { view.innerHTML = pgTravel(); afterTravelRender(); }
     else view.innerHTML = pgModule(id);
   }
   else if (r === 'edit') { tabs(''); view.innerHTML = pgEdit(parts[1], parts[2], parts[3]); afterEditRender(); }
   else if (r === 'ocr') { tabs(''); view.innerHTML = pgOCR(parts[1]); }
   else { tabs('home'); view.innerHTML = pgHome(); }
   view.scrollTop = 0;
-  const c = document.getElementById('clock');
-  if (c) { const n = new Date(); c.textContent = n.getHours() + ':' + String(n.getMinutes()).padStart(2, '0'); }
 }
 
 /* =====================================================================
@@ -169,12 +158,11 @@ function pgHome() {
   const want = S.list('movies').filter(x => x.status === '想看')[0];
   const trip = S.list('travel').filter(x => x.ttype === 'gone').sort((a, b) => b.updatedAt - a.updatedAt)[0];
   const recent = allRecent(3);
-  const est = periodEstimate();
   return `<div class="page">
   <div class="hello"><div class="h-date">${d.getMonth() + 1}月${d.getDate()}日 · 星期${wd}</div><div class="h-title">你好</div></div>
-  <div class="quickrec"><input id="qr" placeholder="快速记录：此刻的想法、链接、待办……" onkeydown="if(event.key==='Enter')quickSave()"><span class="q-btn" onclick="quickSave()">记录</span></div>
+  <div class="quickrec"><input id="qr" placeholder="快速收藏到生活：链接、技巧、待学……" onkeydown="if(event.key==='Enter')quickSave()"><span class="q-btn" onclick="quickSave()">收藏</span></div>
   <div class="sec-h"><h3>常用模块</h3><span onclick="go('/modules')">全部</span></div>
-  <div class="modrow">${['books', 'english', 'notes', 'prompt', 'job'].map(id => { const m = M(id); return `<div class="modcell" onclick="go('/m/${id}')"><div class="modico" style="background:${m.c}">${ICONS[iconOf(id)]}</div><small>${m.name}</small></div>`; }).join('')}</div>
+  <div class="modrow">${['books', 'english', 'outfit', 'travel', 'job'].map(id => { const m = M(id); return `<div class="modcell" onclick="go('/m/${id}')"><div class="modico" style="background:${m.c}">${ICONS[iconOf(id)]}</div><small>${m.name}</small></div>`; }).join('')}</div>
   <div class="sec-h"><h3>学习任务</h3><span onclick="go('/m/english')">英语</span></div>
   <div class="hcard" onclick="go('/m/english')"><div class="hthumb" style="background:#6FA8A0">IELTS</div><div class="hc-main"><div class="hc-t">雅思 12 月冲刺计划</div><div class="hc-s">词汇库 ${S.list('english').length} 词 · 今日：听力 ×2 · 词汇 30</div><div class="pbar"><i style="width:62%;background:#6FA8A0"></i></div></div></div>
   ${words.length ? `<div class="sec-h"><h3>待复习词汇</h3><span onclick="go('/m/english')">全部</span></div>
@@ -185,8 +173,6 @@ function pgHome() {
   <div class="hcard" onclick="go('/m/movies')"><div class="hthumb" style="background:#B08A8A">${esc((want.title || '').slice(0, 4))}</div><div class="hc-main"><div class="hc-t">${esc(want.title)}</div><div class="hc-s">${esc([want.director, want.year].filter(Boolean).join(' · '))} · 想看</div></div></div>` : ''}
   ${trip ? `<div class="sec-h"><h3>近期旅行</h3><span onclick="go('/m/travel')">足迹</span></div>
   <div class="hcard" onclick="go('/album/${trip.id}')"><div class="hthumb" style="background:linear-gradient(135deg,#A8C8D8,#7C9EB0)">${esc((trip.destination || '').slice(0, 2))}</div><div class="hc-main"><div class="hc-t">${esc(trip.destination)}</div><div class="hc-s">${esc(trip.date || '')} · 照片 ${(trip.images || []).length} 张</div></div></div>` : ''}
-  ${est ? `<div class="sec-h"><h3>经期预测 <span class="lockpill">${ICONS.lock} 已单独加锁</span></h3><span onclick="go('/m/period')">详情</span></div>
-  <div class="hcard" onclick="go('/m/period')"><div class="hthumb" style="background:#C48A9A;height:46px;width:46px;border-radius:50%">估</div><div class="hc-main"><div class="hc-t">预计 ${esc(est.next)} 前后（估算）</div><div class="hc-s">平均周期 ${est.avg} 天 · 仅供个人参考，非医学建议</div></div></div>` : ''}
   <div class="sec-h"><h3>最近编辑</h3><span onclick="go('/recent')">全部</span></div>
   <div class="group">${recent.map(r => `<div class="row" onclick="go('/m/${r.m}')"><div class="r-main"><div class="r-title" style="font-size:15px">${esc(titleOf(r.m, r.v))}</div><div class="r-sub">${M(r.m).name} · ${timeAgo(r.v.updatedAt)}</div></div><span class="chev">${ICONS.chev}</span></div>`).join('')}</div>
   </div>`;
@@ -194,8 +180,9 @@ function pgHome() {
 function quickSave() {
   const i = document.getElementById('qr');
   if (i && i.value.trim()) {
-    const r = S.save('notes', { content: i.value.trim(), mood: '' });
-    if (r.ok) { toast('已保存到随笔', '查看', () => go('/m/notes')); i.value = ''; }
+    const text = i.value.trim();
+    const r = S.save('life', { title: text.slice(0, 28), content: text, category: '快速收藏' });
+    if (r.ok) { toast('已保存到生活', '查看', () => go('/m/life')); i.value = ''; }
   } else toast('请输入内容后再记录');
 }
 
@@ -206,7 +193,7 @@ function pgModules() {
   return `<div class="page ${ui.modEdit ? 'editmode' : ''}">
   ${head('全部模块', '', `<button class="iconbtn" onclick="ui.modEdit=!ui.modEdit;render()">${ui.modEdit ? '<b style="font-size:13px;color:var(--blue)">完成</b>' : ICONS.gear}</button>`)}
   <div class="largetitle">全部模块</div>
-  <p class="sub" style="margin-bottom:16px">${ui.modEdit ? '点卡片固定到首页 · 长按可排序（演示）' : '10 个私人空间，数据只存在这台手机上'}</p>
+  <p class="sub" style="margin-bottom:16px">${ui.modEdit ? '点卡片固定到首页' : '8 个私人空间 · 登录后可在手机与电脑间同步'}</p>
   <div class="grid2">${MODULES.map(m => {
     const n = S.list(m.id).length;
     return `<div class="mcard" onclick="openModule('${m.id}')">
@@ -280,29 +267,119 @@ function listHtml(m, list) {
 }
 
 /* =====================================================================
+ * 穿搭 Moodboard：风格标签首页 + 图片优先的双列详情页
+ * ===================================================================== */
+let OUT = null;
+function pgOutfit() {
+  const styles = S.list('outfit').slice().sort((a, b) => (a.order || 0) - (b.order || 0) || a.createdAt - b.createdAt);
+  return `<div class="page">${head('穿搭', '/modules')}
+    <div class="largetitle">穿搭灵感</div>
+    <p class="sub" style="margin-bottom:14px">按风格收藏图片，像一块属于你的 Moodboard。</p>
+    <div class="style-scroll">${styles.map(style => `<div class="style-pill" onclick="go('/outfit/${style.id}')">
+      <span>${esc(style.name || '未命名')}</span><small>${(style.images || []).length}</small>
+      <button aria-label="编辑风格" onclick="event.stopPropagation();showStyleEditor('${style.id}')">${ICONS.pencil}</button></div>`).join('')}
+      <button class="style-pill add" onclick="showStyleEditor()">＋ 新建风格</button></div>
+    ${styles.length ? `<div class="empty compact"><div class="e-ico">${ICONS.outfit}</div><p>选择一个风格查看灵感图片<br>风格标签可滑动、改名或删除</p></div>` :
+      `<div class="empty"><div class="e-ico">${ICONS.outfit}</div><p>还没有风格分类<br>先新建一个标签吧</p><span class="chip inline-add" onclick="showStyleEditor()">新建风格</span></div>`}
+  </div>`;
+}
+function showStyleEditor(id) {
+  const current = id ? S.get('outfit', id) : null;
+  const sm = document.getElementById('sheetmask'), sh = document.getElementById('sheet');
+  sh.innerHTML = `<div class="s-group"><div class="s-title">${current ? '编辑风格' : '新建风格'}</div>
+    <div class="sheet-field"><input id="stylename" type="text" value="${esc(current ? current.name : '')}" placeholder="例如 Clean Fit、Vintage"></div>
+    <button class="s-btn" id="stylesave">保存</button>${current ? '<button class="s-btn danger" id="styledelete">删除这个风格</button>' : ''}</div>
+    <div class="s-group"><button class="s-btn s-cancel" onclick="closeSheet()">取消</button></div>`;
+  sm.classList.add('show'); sh.classList.add('show');
+  document.getElementById('stylesave').onclick = () => {
+    const name = document.getElementById('stylename').value.trim();
+    if (!name) { toast('请输入风格名称'); return; }
+    const values = current ? Object.assign({}, current, { name }) : { name, images: [], order: S.list('outfit').length };
+    S.save('outfit', values); closeSheet(); render();
+  };
+  const del = document.getElementById('styledelete');
+  if (del) del.onclick = () => { closeSheet(); confirmDanger('删除这个风格？', '风格中的灵感图片也会删除，其他风格不受影响。', '删除', () => {
+    const removed = S.remove('outfit', current.id);
+    if (removed) S.photos.removeMany(removed.images || []);
+    go('/m/outfit');
+  }); };
+  setTimeout(() => document.getElementById('stylename') && document.getElementById('stylename').focus(), 220);
+}
+function pgOutfitBoard(id) {
+  const style = S.get('outfit', id);
+  if (!style) return `<div class="page">${head('穿搭', '/m/outfit')}<div class="empty"><p>该风格不存在或已删除</p></div></div>`;
+  if (!OUT || OUT.id !== id) OUT = { id, edit: false };
+  const images = (style.images || []).slice();
+  const cells = images.map((pid, i) => `<div class="acell loading" data-pid="${pid}" onclick="outfitPhotoClick(${i})"><img alt="穿搭灵感 ${i + 1}" loading="lazy" draggable="false">
+    ${OUT.edit ? `<button class="photo-delete" aria-label="删除图片" onclick="event.stopPropagation();outfitDeletePhoto('${pid}')">${ICONS.close}</button><span class="drag-badge">长按拖动</span>` : ''}</div>`).join('');
+  return `<div class="page ${OUT.edit ? 'album-edit' : ''}">${head(esc(style.name), '/m/outfit', `<button class="iconbtn" onclick="showStyleEditor('${style.id}')">${ICONS.pencil}</button>`)}
+    <div class="alb-sub"><span class="as-info">${images.length} 张灵感图片</span><span class="as-edit" onclick="OUT.edit=!OUT.edit;render()">${OUT.edit ? '完成排序' : '管理图片'}</span></div>
+    ${images.length ? `<div class="acols" id="outfitgrid">${cells}</div>` : `<div class="empty"><div class="e-ico">${ICONS.cam}</div><p>还没有灵感图片<br>可从手机相册或电脑一次选择多张</p></div>`}
+    <input type="file" id="outfitfile" accept="image/*" multiple style="display:none" onchange="outfitAddPhotos(this)">
+    <button class="fab" aria-label="添加穿搭图片" onclick="document.getElementById('outfitfile').click()">${ICONS.plus}</button></div>`;
+}
+function outfitPhotoClick(index) {
+  if (DRAG_GUARD || (OUT && OUT.edit)) return;
+  const style = S.get('outfit', OUT.id); if (!style) return;
+  ALB = { id: 'outfit_' + OUT.id, edit: false, sel: new Set(), order: (style.images || []).slice() };
+  openViewer(index);
+}
+async function outfitAddPhotos(input) {
+  const picked = Array.from(input.files || []); input.value = '';
+  const style = OUT && S.get('outfit', OUT.id); if (!style || !picked.length) return;
+  let added = 0;
+  for (const file of picked) {
+    if (!/^image\//.test(file.type) || file.size > 30 * 1024 * 1024) continue;
+    try { (style.images = style.images || []).push(await S.photos.add('outfit_' + style.id, file)); added++; }
+    catch (_) { toast('有图片上传失败，请检查网络后重试'); }
+  }
+  S.save('outfit', style); render(); toast('已添加 ' + added + ' 张图片');
+}
+function outfitDeletePhoto(pid) {
+  const style = OUT && S.get('outfit', OUT.id); if (!style) return;
+  confirmDanger('删除这张图片？', '只会从当前风格删除。', '删除', () => {
+    style.images = (style.images || []).filter(id => id !== pid); S.save('outfit', style); S.photos.remove(pid).catch(() => {}); render();
+  });
+}
+function afterOutfitRender() {
+  document.querySelectorAll('#outfitgrid .acell').forEach(albumLoadThumb);
+  if (OUT && OUT.edit) bindSortable(document.getElementById('outfitgrid'), order => {
+    const style = S.get('outfit', OUT.id); if (!style) return;
+    style.images = order; S.save('outfit', style); toast('新的图片顺序已保存');
+  });
+}
+
+/* =====================================================================
  * 英语
  * ===================================================================== */
 function pgEnglish() {
   const tabs = ['词汇', '听力', '口语', '阅读', '写作', '学习计划', '模考复盘'];
+  const subtypeByTab = { '听力':'listening', '口语':'speaking', '阅读':'reading', '写作':'writing' };
   let body = '';
   if (ui.enTab === '词汇') {
-    const list = sortedItems('english');
+    const list = sortedItems('english').filter(x => !x.subtype);
     body = list.length
       ? `<div class="group">${list.map(w => `<div class="row" onclick="go('/edit/english/${w.id}')"><div class="r-main"><div class="r-title">${esc(w.word || '（无单词）')}</div><div class="r-sub">${esc([w.pos, w.meaning].filter(Boolean).join(' '))}${w.scene ? ' · ' + esc(w.scene) : ''}</div></div>${(w.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}<span class="chev">${ICONS.chev}</span></div>`).join('')}</div>`
       : `<div class="empty"><div class="e-ico">${ICONS.english}</div><p>词汇库还空着<br>点 + 录入第一个单词</p></div>`;
+  } else if (subtypeByTab[ui.enTab]) {
+    const subtype = subtypeByTab[ui.enTab];
+    const list = sortedItems('english').filter(x => x.subtype === subtype);
+    body = list.length ? `<div class="group">${list.map(item => `<div class="item" onclick="go('/edit/english/${item.id}/${subtype}')">
+      <div class="i-main"><div class="i-t">${esc(titleOf('english', item))}</div>
+      <div class="i-m">${esc(descOf('english', item) || '已保存附件或笔记')}${(item.files || []).length ? '<br>附件 ' + item.files.length + ' 个' : ''}</div></div><span class="chev">${ICONS.chev}</span></div>`).join('')}</div>`
+      : `<div class="empty"><div class="e-ico">${ICONS.english}</div><p>${ui.enTab}还没有内容<br>点右下角 + 添加第一条</p></div>`;
   } else if (ui.enTab === '学习计划') {
     body = `<div class="group"><div class="row"><div class="r-main"><div class="r-title" style="font-size:15px">今日任务</div><div class="r-sub">听力 Section 4 ×2 · 词汇 30 · 口语录音 1 段</div></div><span class="r-val">2/3</span></div>
     <div class="row"><div class="r-main"><div class="r-title" style="font-size:15px">12 月冲刺计划</div><div class="r-sub">第 3 周 · 共 6 周</div><div class="pbar"><i style="width:48%;background:#6FA8A0"></i></div></div></div></div>`;
   } else if (ui.enTab === '模考复盘') {
     body = `<div class="group"><div class="row"><div class="r-main"><div class="r-title" style="font-size:15px">11月2日 模考 · 总分 6.5</div><div class="r-sub">听 7.0 / 读 6.5 / 写 6.0 / 说 6.0 · 写作 Task 2 逻辑链待加强</div></div><span class="chev">${ICONS.chev}</span></div></div>`;
-  } else {
-    body = `<div class="empty"><div class="e-ico">${ICONS.english}</div><p>${ui.enTab}资料按分类收纳<br>（该区域将在后续版本开放录入）</p></div>`;
   }
   return `<div class="page">${head('英语', '/modules')}
   <div class="largetitle">英语 · 雅思</div>
   <div class="segwrap"><div class="seg">${tabs.map(t => `<div class="${t === ui.enTab ? 'on' : ''}" onclick="ui.enTab='${t}';render()">${t}</div>`).join('')}</div></div>
   ${body}
-  ${ui.enTab === '词汇' ? `<button class="fab" onclick="go('/edit/english/new')">${ICONS.plus}</button>` : ''}</div>`;
+  ${ui.enTab === '词汇' ? `<button class="fab" aria-label="新增词汇" onclick="go('/edit/english/new')">${ICONS.plus}</button>` :
+    subtypeByTab[ui.enTab] ? `<button class="fab" aria-label="新增${ui.enTab}" onclick="go('/edit/english/new/${subtypeByTab[ui.enTab]}')">${ICONS.plus}</button>` : ''}</div>`;
 }
 
 /* =====================================================================
@@ -350,84 +427,6 @@ function pgPrompt() {
 }
 
 /* =====================================================================
- * 随笔
- * ===================================================================== */
-function pgNotes() {
-  const list = sortedItems('notes');
-  let body = '';
-  if (ui.noteView === 'tl') {
-    body = list.length
-      ? list.map(n => `<div class="note-card" onclick="go('/edit/notes/${n.id}')"><div class="n-date">${new Date(n.createdAt).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' })} · ${esc(n.mood || '无心情标签')}</div><div class="n-txt">${esc(n.content)}</div></div>`).join('')
-        + `<div style="text-align:center;margin:6px 0 4px"><span class="chip" onclick="randomNote()">随机回顾一篇</span></div>`
-      : `<div class="empty"><div class="e-ico">${ICONS.notes}</div><p>写下第一篇随笔<br>草稿会自动保存</p></div>`;
-  } else {
-    const daysWith = new Set(list.map(n => new Date(n.createdAt).getDate()));
-    let cells = ''; const first = new Date(); first.setDate(1);
-    for (let i = 0; i < (first.getDay() + 6) % 7; i++) cells += '<span></span>';
-    const dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
-    for (let d2 = 1; d2 <= dim; d2++) cells += `<div class="cal-d ${d2 === new Date().getDate() ? 'today' : ''}" ${daysWith.has(d2) ? 'style="box-shadow:inset 0 -3px 0 0 #B0A090;font-weight:700"' : ''}>${d2}</div>`;
-    body = `<div class="cal"><div class="cal-h"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="cal-g">${cells}</div>
-    <p class="notice" style="margin-top:10px">下划线标记的日子写过随笔。草稿自动保存，支持全文搜索与随机回顾。</p></div>`;
-  }
-  return `<div class="page">${head('随笔', '/modules', `<button class="iconbtn" onclick="toast('全文搜索：演示')">${ICONS.search}</button>`)}
-  <div class="largetitle">随笔</div>
-  <div class="seg"><div class="${ui.noteView === 'tl' ? 'on' : ''}" onclick="ui.noteView='tl';render()">时间线</div><div class="${ui.noteView === 'cal' ? 'on' : ''}" onclick="ui.noteView='cal';render()">日历</div></div>
-  ${body}
-  <button class="fab" onclick="go('/edit/notes/new')">${ICONS.plus}</button></div>`;
-}
-function randomNote() {
-  const list = S.list('notes');
-  if (!list.length) return toast('还没有随笔可以回顾');
-  const n = list[Math.floor(Math.random() * list.length)];
-  confirmDanger('随机回顾 · ' + new Date(n.createdAt).toLocaleDateString('zh-CN'), esc((n.content || '').slice(0, 120)), '打开这篇', () => go('/edit/notes/' + n.id));
-}
-
-/* =====================================================================
- * 经期（数据驱动：平均周期与估算由记录计算）
- * ===================================================================== */
-function periodEstimate() {
-  const recs = S.list('period').filter(r => r.start).sort((a, b) => a.start < b.start ? -1 : 1);
-  if (recs.length < 2) return null;
-  const cycles = [];
-  for (let i = 1; i < recs.length; i++) cycles.push((new Date(recs[i].start) - new Date(recs[i - 1].start)) / 86400000);
-  const avg = Math.round(cycles.reduce((a, b) => a + b, 0) / cycles.length);
-  const last = new Date(recs[recs.length - 1].start);
-  const next = new Date(last.getTime() + avg * 86400000);
-  return { avg, next: (next.getMonth() + 1) + ' 月 ' + next.getDate() + ' 日', nextDate: next, lastStart: recs[recs.length - 1].start };
-}
-function pgPeriod() {
-  const recs = S.list('period').sort((a, b) => b.start < a.start ? -1 : 1);
-  const est = periodEstimate();
-  const nowD = new Date(), y = nowD.getFullYear(), mo = nowD.getMonth();
-  const first = new Date(y, mo, 1), dim = new Date(y, mo + 1, 0).getDate();
-  let cells = ''; for (let i = 0; i < (first.getDay() + 6) % 7; i++) cells += '<span></span>';
-  const inPeriod = d2 => recs.some(r => {
-    if (!r.start) return false;
-    const s = new Date(r.start), e = r.end ? new Date(r.end) : nowD;
-    const t = new Date(y, mo, d2);
-    return t >= new Date(s.getFullYear(), s.getMonth(), s.getDate()) && t <= e;
-  });
-  const isEst = d2 => {
-    if (!est) return false;
-    const t = new Date(y, mo, d2);
-    return t >= est.nextDate && t < est.nextDate.getTime() + 5 * 86400000;
-  };
-  for (let d2 = 1; d2 <= dim; d2++) cells += `<div class="cal-d ${inPeriod(d2) ? 'p' : ''} ${!inPeriod(d2) && isEst(d2) ? 'est' : ''} ${d2 === nowD.getDate() ? 'today' : ''}">${d2}</div>`;
-  return `<div class="page">${head('经期', '/modules', `<span class="lockpill">${ICONS.lock} 已加锁</span>`)}
-  <div class="largetitle">经期</div>
-  <div class="cal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>${y} 年 ${mo + 1} 月</b></div>
-  <div class="cal-h"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
-  <div class="cal-g">${cells}</div></div>
-  ${est ? `<div class="stat3"><div class="stat"><b>${est.avg} 天</b><span>平均周期</span></div><div class="stat"><b>5 天</b><span>平均经期</span></div><div class="stat"><b>${est.next.replace(' ', '')}</b><span>下次预计（估算）</span></div></div>`
-    : `<p class="notice" style="margin-top:12px">至少记录两次经期后，才能计算平均周期与下次估算。</p>`}
-  <div class="sec-h"><h3>历史记录</h3></div>
-  ${recs.length ? `<div class="group">${recs.map(r => `<div class="row" onclick="go('/edit/period/${r.id}')"><div class="r-main"><div class="r-title" style="font-size:15px">${esc(r.start)} ${r.end ? '~ ' + esc(r.end) : '起 · 进行中'}</div><div class="r-sub">${r.note ? esc(r.note) : '无备注'} · ${timeAgo(r.updatedAt)}更新</div></div><span class="chev">${ICONS.chev}</span></div>`).join('')}</div>`
-    : `<div class="empty"><div class="e-ico">${ICONS.period}</div><p>还没有经期记录</p></div>`}
-  <p class="notice">图例：红色实心 = 经期记录，斜纹 = 预测（<b>估算</b>）。预测基于历史周期自动计算，仅供个人参考，不构成医学诊断或建议。</p>
-  <button class="fab" onclick="go('/edit/period/new')">${ICONS.plus}</button></div>`;
-}
-
-/* =====================================================================
  * 旅行（去过 / 想去 数据驱动）
  * ===================================================================== */
 function pgTravel() {
@@ -436,7 +435,8 @@ function pgTravel() {
   if (ui.trTab === 'gone') {
     body = list.length ? `<div class="falls">${list.map(v => {
       const h = 130 + (String(v.id).charCodeAt(3) % 60);
-      return `<div class="fall" style="height:${h}px;background:linear-gradient(135deg,#A8C8D8,#7C9EB0)" onclick="go('/album/${v.id}')">
+      const cover = v.coverPhotoId || (v.images || [])[0] || '';
+      return `<div class="fall" data-cover="${cover}" style="height:${h}px;background:linear-gradient(135deg,#A8C8D8,#7C9EB0)" onclick="go('/album/${v.id}')">
         <div><div style="font-size:14px">${esc(v.destination || '（无目的地）')}</div><div style="font-weight:400;opacity:.85;margin-top:2px">${esc(v.date || '')} · 照片 ${(v.images || []).length} 张</div></div></div>`;
     }).join('')}</div>` : `<div class="empty"><div class="e-ico">${ICONS.travel}</div><p>记录去过的地方<br>照片不限数量，双列展示</p></div>`;
   } else {
@@ -454,6 +454,17 @@ function pgTravel() {
   ${body}
   <button class="fab" onclick="go('/edit/travel/new/${ui.trTab}')">${ICONS.plus}</button></div>`;
 }
+function afterTravelRender() {
+  document.querySelectorAll('.fall[data-cover]').forEach(cell => {
+    const pid = cell.dataset.cover; if (!pid) return;
+    S.photos.get(pid).then(rec => {
+      if (!rec || !rec.thumb) return;
+      const url = URL.createObjectURL(rec.thumb);
+      cell.style.backgroundImage = `linear-gradient(0deg,rgba(0,0,0,.38),rgba(0,0,0,.04)),url("${url}")`;
+      cell.style.backgroundSize = 'cover'; cell.style.backgroundPosition = 'center';
+    }).catch(() => {});
+  });
+}
 
 /* =====================================================================
  * 旅行相册 v0.3 —— 「去过的地方」照片详情页
@@ -463,6 +474,7 @@ function pgTravel() {
  * ===================================================================== */
 let ALB = null;            // 当前相册会话 { id, edit, sel:Set, order:[] }
 const fullURLCache = {};   // pid -> objectURL（查看器原图，独立于缩略图缓存）
+let DRAG_GUARD = false;
 
 function pgAlbum(id) {
   const rec = id ? S.get('travel', id) : null;
@@ -483,12 +495,14 @@ function pgAlbum(id) {
   ${head(esc(name), '/m/travel', right)}
   <div class="alb-sub">
     <span class="as-info">${esc(rec.date || '')}${n ? ' · ' + n + ' 张照片' : ' · 暂无照片'}</span>
+    <span class="as-edit" onclick="showCoverActions()">设置封面</span>
     <span class="as-edit" onclick="go('/edit/travel/${id}/gone')">编辑资料</span>
   </div>
   ${n ? `<div class="acols">${cells}</div>`
     : `<div class="empty"><div class="e-ico">${ICONS.cam}</div><p>还没有这个地点的照片<br>从相册导入，双列瀑布流展示</p>
     <span class="chip" style="margin-top:16px;display:inline-block" onclick="document.getElementById('albfile').click()">添加照片</span></div>`}
   <input type="file" id="albfile" accept="image/*" multiple style="display:none" onchange="albumAddPhotos(this)">
+  <input type="file" id="coverfile" accept="image/*" style="display:none" onchange="albumUploadCover(this)">
   ${ALB.edit ? albumBarHtml(n) : ''}
   </div>`;
 }
@@ -500,6 +514,7 @@ function albumBarHtml(n) {
     <span class="ab-count" id="abcount">已选 ${sel} 张</span>
     <button class="ab-btn" onclick="albumToggleAll()">${all ? '全不选' : '全选'}</button>
     <button class="ab-btn primary" onclick="document.getElementById('albfile').click()">添加照片</button>
+    <button class="ab-btn" id="abcover" onclick="albumSetSelectedCover()"${sel === 1 ? '' : ' disabled'}>设为封面</button>
     <button class="ab-btn danger" id="abdel" onclick="albumDeleteSel()"${sel ? '' : ' disabled'}>${sel ? '删除 ' + sel + ' 张' : '删除'}</button>
   </div>`;
 }
@@ -507,7 +522,7 @@ function albumBarHtml(n) {
 /* ---------- 相册交互（选择切换只改 DOM，不整页重渲，保住滚动位置） ---------- */
 function albumEnterEdit() { ALB.edit = true; render(); }
 function albumExitEdit() { ALB.edit = false; ALB.sel.clear(); render(); }
-function albumCellClick(pid, i) { if (ALB.edit) albumToggleSel(pid); else openViewer(i); }
+function albumCellClick(pid, i) { if (DRAG_GUARD) return; if (ALB.edit) albumToggleSel(pid); else openViewer(i); }
 function albumToggleSel(pid) {
   if (ALB.sel.has(pid)) ALB.sel.delete(pid); else ALB.sel.add(pid);
   const cell = document.querySelector('.acell[data-pid="' + pid + '"]');
@@ -520,6 +535,7 @@ function albumToggleSel(pid) {
   if (el) el.textContent = '已选 ' + ALB.sel.size + ' 张';
   const del = document.getElementById('abdel');
   if (del) { del.disabled = !ALB.sel.size; del.textContent = ALB.sel.size ? '删除 ' + ALB.sel.size + ' 张' : '删除'; }
+  const cover = document.getElementById('abcover'); if (cover) cover.disabled = ALB.sel.size !== 1;
 }
 function albumToggleAll() {
   const rec = S.get('travel', ALB.id);
@@ -540,6 +556,7 @@ function albumDeleteSel() {
     if (!rec) return;
     const del = Array.from(ALB.sel);
     rec.images = (rec.images || []).filter(pid => !ALB.sel.has(pid));
+    if (rec.coverPhotoId && ALB.sel.has(rec.coverPhotoId)) rec.coverPhotoId = rec.images[0] || '';
     persistTravelAlbum(rec);
     if (S.photos.available()) del.forEach(pid => {
       S.photos.remove(pid).catch(() => {});
@@ -551,6 +568,35 @@ function albumDeleteSel() {
     render();
     toast('已删除 ' + del.length + ' 张照片');
   });
+}
+
+function showCoverActions() {
+  const rec = ALB && S.get('travel', ALB.id); if (!rec) return;
+  const sm = document.getElementById('sheetmask'), sh = document.getElementById('sheet');
+  sh.innerHTML = `<div class="s-group"><div class="s-title">自定义「${esc(rec.destination || '该地点')}」封面<br><span style="font-size:12px">上传新封面不会改动地点内的原照片</span></div>
+    <button class="s-btn" id="coverupload">重新上传封面</button>
+    ${(rec.images || []).length ? '<button class="s-btn" id="coverfirst">使用当前第一张照片</button>' : ''}
+    <button class="s-btn" id="coverselect">从已有照片选择（进入管理）</button></div>
+    <div class="s-group"><button class="s-btn s-cancel" onclick="closeSheet()">取消</button></div>`;
+  sm.classList.add('show'); sh.classList.add('show');
+  document.getElementById('coverupload').onclick = () => { closeSheet(); document.getElementById('coverfile').click(); };
+  const first = document.getElementById('coverfirst'); if (first) first.onclick = () => { rec.coverPhotoId = rec.images[0]; persistTravelAlbum(rec); closeSheet(); toast('封面已更换'); };
+  document.getElementById('coverselect').onclick = () => { closeSheet(); ALB.edit = true; ALB.sel.clear(); render(); toast('选中 1 张照片后点「设为封面」'); };
+}
+function albumSetSelectedCover() {
+  if (!ALB || ALB.sel.size !== 1) { toast('请只选中 1 张照片'); return; }
+  const rec = S.get('travel', ALB.id); if (!rec) return;
+  rec.coverPhotoId = Array.from(ALB.sel)[0]; persistTravelAlbum(rec); toast('封面已更换');
+}
+async function albumUploadCover(input) {
+  const file = input.files && input.files[0]; input.value = '';
+  const rec = ALB && S.get('travel', ALB.id); if (!file || !rec) return;
+  try {
+    const oldStandalone = rec.coverPhotoId && !(rec.images || []).includes(rec.coverPhotoId) ? rec.coverPhotoId : '';
+    rec.coverPhotoId = await S.photos.add('travel_cover_' + rec.id, file);
+    persistTravelAlbum(rec); if (oldStandalone) S.photos.remove(oldStandalone).catch(() => {});
+    toast('新封面已保存，地点原照片未改动');
+  } catch (_) { toast('封面上传失败，请检查网络后重试'); }
 }
 
 /* 批量导入：不限张数，逐张压缩入库（ownerKey 与地点 ID 关联） */
@@ -588,6 +634,10 @@ function afterAlbumRender() {
   if (bar) document.getElementById('phone').appendChild(bar);   // 挂到手机壳，不随滚动（0 张照片的编辑模式同样生效）
   if (!ALB || !ALB.order.length || !S.photos.available()) return;
   const cells = Array.from(document.querySelectorAll('.acell'));
+  if (ALB.edit) bindSortable(document.querySelector('.acols'), order => {
+    const rec = S.get('travel', ALB.id); if (!rec) return;
+    rec.images = order; ALB.order = order.slice(); persistTravelAlbum(rec); toast('新的照片顺序已保存');
+  });
   if (!('IntersectionObserver' in window)) { cells.forEach(albumLoadThumb); return; }
   const io = new IntersectionObserver(ents => {
     ents.forEach(en => { if (en.isIntersecting) { io.unobserve(en.target); albumLoadThumb(en.target); } });
@@ -597,12 +647,12 @@ function afterAlbumRender() {
 function albumLoadThumb(cell) {
   const pid = cell.dataset.pid, img = cell.querySelector('img');
   if (!pid || !img) return;
-  const fallback = () => { cell.classList.remove('loading'); cell.style.minHeight = '64px'; };
+  const fallback = () => { cell.classList.remove('loading'); cell.classList.add('broken'); cell.style.minHeight = '96px'; };
   const apply = url => {
     img.onload = () => {
       cell.style.minHeight = '0';
       if (img.naturalWidth && img.naturalHeight) cell.style.aspectRatio = img.naturalWidth + ' / ' + img.naturalHeight;
-      cell.classList.remove('loading');
+      cell.classList.remove('loading', 'broken');
     };
     img.onerror = fallback;
     img.src = url;
@@ -615,17 +665,67 @@ function albumLoadThumb(cell) {
   }).catch(fallback);
 }
 
+/* Stable-ID reorder for touch and mouse. DOM order is persisted as photo IDs,
+ * never as transient array indexes. Long-press starts a touch drag; mouse drag
+ * starts immediately. */
+function bindSortable(container, onSave) {
+  if (!container) return;
+  let pending = null, dragging = null, timer = null, startX = 0, startY = 0, pointerKind = '', pointerId = 0;
+  const begin = () => {
+    dragging = pending; if (!dragging) return;
+    dragging.classList.add('dragging'); DRAG_GUARD = true;
+    try { dragging.setPointerCapture(pointerId); } catch (_) {}
+  };
+  const cleanup = () => {
+    clearTimeout(timer); timer = null;
+    if (dragging) dragging.classList.remove('dragging');
+    pending = null; dragging = null;
+  };
+  container.addEventListener('pointerdown', e => {
+    const cell = e.target.closest('.acell');
+    if (!cell || e.target.closest('button,.asel')) return;
+    pending = cell; startX = e.clientX; startY = e.clientY; pointerKind = e.pointerType; pointerId = e.pointerId;
+    if (e.pointerType !== 'mouse') timer = setTimeout(begin, 260);
+  });
+  container.addEventListener('pointermove', e => {
+    if (!pending) return;
+    const distance = Math.hypot(e.clientX - startX, e.clientY - startY);
+    if (!dragging && pointerKind === 'mouse' && distance > 4) begin();
+    if (!dragging && pointerKind !== 'mouse' && distance > 10) { clearTimeout(timer); pending = null; return; }
+    if (!dragging) return;
+    e.preventDefault();
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const over = target && target.closest('.acell');
+    if (!over || over === dragging || over.parentElement !== container) return;
+    const rect = over.getBoundingClientRect();
+    const dragRect = dragging.getBoundingClientRect();
+    const sameRow = Math.abs(dragRect.top - rect.top) < Math.min(dragRect.height, rect.height) / 2;
+    const before = sameRow ? e.clientX < rect.left + rect.width / 2 : e.clientY < rect.top + rect.height / 2;
+    container.insertBefore(dragging, before ? over : over.nextSibling);
+  }, { passive: false });
+  const finish = () => {
+    if (dragging) {
+      const order = Array.from(container.querySelectorAll('.acell')).map(cell => cell.dataset.pid).filter(Boolean);
+      cleanup(); onSave(order);
+      setTimeout(() => { DRAG_GUARD = false; }, 80);
+    } else cleanup();
+  };
+  container.addEventListener('pointerup', finish);
+  container.addEventListener('pointercancel', finish);
+}
+
 /* =====================================================================
  * 全屏查看器：左右滑动切换 · 双指缩放 · 双击放大 · 点空白返回相册
  * Pointer Events 统一处理鼠标与触摸；strip 横向平移翻页，img 变换缩放平移
  * ===================================================================== */
-const VIEWER = { open: false, idx: 0, list: [], scale: 1, tx: 0, ty: 0 };
+const VIEWER = { open: false, idx: 0, list: [], scale: 1, tx: 0, ty: 0, scrollTop: 0 };
 let VG = null;   // 当前手势 { t:'drag'|'pinch', ... }
 
 function openViewer(idx) {
   if (!ALB || !ALB.order.length) return;
   closeViewer();
   VIEWER.open = true;
+  VIEWER.scrollTop = view.scrollTop;
   VIEWER.list = ALB.order.slice();
   VIEWER.idx = Math.max(0, Math.min(idx, VIEWER.list.length - 1));
   VIEWER.scale = 1; VIEWER.tx = 0; VIEWER.ty = 0;
@@ -637,7 +737,7 @@ function openViewer(idx) {
       <span class="v-count" id="vcount"></span>
       <span style="width:36px"></span>
     </div>
-    <div class="v-strip" id="vstrip">${VIEWER.list.map((pid, i) => `<div class="v-page"><img data-pid="${pid}" alt="照片 ${i + 1}" draggable="false"></div>`).join('')}</div>
+    <div class="v-strip" id="vstrip"><div class="v-track" id="vtrack">${VIEWER.list.map((pid, i) => `<div class="v-page"><img data-pid="${pid}" alt="照片 ${i + 1}" draggable="false"><div class="v-error" hidden>图片加载失败<br><small>请检查网络或重新上传</small></div></div>`).join('')}</div></div>
     <button class="v-nav v-prev" id="vprev" title="上一张">${ICONS.chev}</button>
     <button class="v-nav v-next" id="vnext" title="下一张">${ICONS.chev}</button>
     <div class="v-hint">左右滑动切换 · 双指缩放 · 双击放大</div>`;
@@ -651,7 +751,7 @@ function openViewer(idx) {
 function closeViewer() {
   const el = document.getElementById('viewer');
   if (el) el.remove();
-  if (VIEWER.open) { VIEWER.open = false; VIEWER.list = []; VG = null; }
+  if (VIEWER.open) { VIEWER.open = false; VIEWER.list = []; VG = null; view.scrollTop = VIEWER.scrollTop; }
   window.removeEventListener('keydown', viewerKeys);
 }
 function viewerStep(dir) {
@@ -662,10 +762,11 @@ function viewerStep(dir) {
 }
 function viewerApply(instant) {
   const strip = document.getElementById('vstrip');
-  if (!strip) return;
-  strip.classList.toggle('anim', !instant);
-  strip.style.transform = 'translateX(' + (-VIEWER.idx * 100) + '%)';
-  const imgs = strip.querySelectorAll('img');
+  const track = document.getElementById('vtrack');
+  if (!strip || !track) return;
+  track.classList.toggle('anim', !instant);
+  track.style.transform = 'translate3d(' + (-VIEWER.idx * strip.clientWidth) + 'px,0,0)';
+  const imgs = track.querySelectorAll('img');
   const cur = imgs[VIEWER.idx];
   if (cur) {
     cur.classList.toggle('zoomable', !instant);   // 手势进行中禁用过渡，松手后平滑归位
@@ -677,18 +778,27 @@ function viewerApply(instant) {
   }
   const c = document.getElementById('vcount');
   if (c) c.textContent = (VIEWER.idx + 1) + ' / ' + VIEWER.list.length;
+  const prev = document.getElementById('vprev'), next = document.getElementById('vnext');
+  if (prev) prev.disabled = VIEWER.idx === 0;
+  if (next) next.disabled = VIEWER.idx === VIEWER.list.length - 1;
 }
 function viewerLoadImg(img) {
   const pid = img && img.dataset.pid;
-  if (!pid || img.src) return;
+  if (!pid || img.dataset.loaded === '1') return;
+  const fail = () => {
+    img.dataset.loaded = 'error'; img.hidden = true;
+    const error = img.parentElement && img.parentElement.querySelector('.v-error'); if (error) error.hidden = false;
+  };
+  img.onload = () => { img.dataset.loaded = '1'; img.hidden = false; const error = img.parentElement.querySelector('.v-error'); if (error) error.hidden = true; };
+  img.onerror = fail;
   if (fullURLCache[pid]) { img.src = fullURLCache[pid]; return; }
-  if (!S.photos.available()) return;
+  if (!S.photos.available()) { fail(); return; }
   S.photos.get(pid).then(rec => {
-    if (!rec || !rec.blob) return;
+    if (!rec || !rec.blob) { fail(); return; }
     const url = URL.createObjectURL(rec.blob);
     fullURLCache[pid] = url;
-    if (!img.src) img.src = url;   // 可能已翻页，仅填充仍空白的 img
-  }).catch(() => {});
+    if (img.isConnected) img.src = url;
+  }).catch(fail);
 }
 
 /* 手势绑定 */
@@ -729,8 +839,8 @@ function bindViewerGestures() {
         viewerClampPan();
         viewerApply(true);
       } else {
-        strip.classList.remove('anim');
-        strip.style.transform = 'translateX(' + (-VIEWER.idx * 100) + '%) translateX(' + dx + 'px)';
+        const track = document.getElementById('vtrack');
+        if (track) { track.classList.remove('anim'); track.style.transform = 'translate3d(' + (-VIEWER.idx * strip.clientWidth + dx) + 'px,0,0)'; }
       }
     }
   });
@@ -830,6 +940,11 @@ function formFor(module, record, subtype) {
   if (module === 'travel') {
     const st = record ? (record.ttype || 'gone') : (subtype || 'gone');
     return { key: st === 'want' ? 'travel_want' : 'travel_gone', form: S.FORMS[st === 'want' ? 'travel_want' : 'travel_gone'] };
+  }
+  if (module === 'english') {
+    const st = record ? record.subtype : subtype;
+    const key = st ? 'english_' + st : 'english';
+    return { key, form: S.FORMS[key] };
   }
   return { key: module, form: S.FORMS[module] };
 }
@@ -933,6 +1048,15 @@ function renderField(f, v) {
       <input type="file" id="file_${f.k}" accept="image/*" multiple style="display:none" onchange="edImgAdd('${f.k}',this)">
       <p class="sub" style="font-size:12px;margin-top:6px">支持一次选择多张；‹ › 调整顺序，✕ 删除。自动生成缩略图，独立副本保存。</p></div>`;
     }
+    case 'files': {
+      const arr = Array.isArray(v) ? v : [];
+      return `<div class="field">${L}<div class="group">${arr.map((ref, i) => `<div class="row">
+        <div class="r-main"><div class="r-title" style="font-size:15px">${esc(ref.name || '附件')}</div><div class="r-sub">${esc(ref.type || '文件')}${ref.size ? ' · ' + Math.max(1, Math.round(ref.size / 1024)) + ' KB' : ''}</div></div>
+        <button class="ab-btn" onclick="edFileOpen('${f.k}',${i})">查看</button><button class="ab-btn danger" onclick="edFileDel('${f.k}',${i})">删除</button></div>`).join('')}</div>
+        <button class="chip" style="margin-top:8px" onclick="document.getElementById('asset_${f.k}').click()">＋ 添加附件</button>
+        <input type="file" id="asset_${f.k}" accept="${esc(f.accept || '*/*')}" multiple style="display:none" onchange="edFileAdd('${f.k}',this)">
+        <p class="sub" style="font-size:12px;margin-top:6px">可一次选择多个文件；登录后附件会同步到云端。</p></div>`;
+    }
     default:
       return '';
   }
@@ -993,6 +1117,37 @@ function edImgDel(k, i) {
   if (S.photos.available()) S.photos.remove(pid).catch(() => {});
   delete photoURLCache[pid];
   rerenderEditor(); markDirty();
+}
+async function edFileAdd(k, input) {
+  const picked = Array.from(input.files || []);
+  if (!picked.length || !S.files.available()) return;
+  const sv = document.getElementById('savestate');
+  if (sv) { sv.textContent = '正在上传附件…'; sv.classList.add('saving'); }
+  for (const file of picked) {
+    if (file.size > 30 * 1024 * 1024) { toast('已跳过超大文件（>30MB）：' + file.name); continue; }
+    try {
+      const ref = await S.files.add(ED.module + '_' + ED.draftKey, file);
+      ED.values[k] = (Array.isArray(ED.values[k]) ? ED.values[k] : []).concat(ref);
+    } catch (e) { toast('附件保存失败：' + file.name); }
+  }
+  input.value = ''; rerenderEditor(); markDirty();
+}
+function edFileDel(k, i) {
+  const arr = ED.values[k] || [];
+  const ref = arr.splice(i, 1)[0];
+  if (ref) S.files.remove(ref).catch(() => {});
+  rerenderEditor(); markDirty();
+}
+async function edFileOpen(k, i) {
+  const ref = (ED.values[k] || [])[i];
+  if (!ref) return;
+  try {
+    const rec = await S.files.get(ref);
+    if (!rec || !rec.blob) throw new Error('missing');
+    const url = URL.createObjectURL(rec.blob);
+    const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (_) { toast('附件加载失败，请检查网络或重新上传'); }
 }
 function rerenderEditor() {
   const keep = view.scrollTop;
@@ -1055,8 +1210,13 @@ function edDelete() {
     const removed = S.remove(module, id);
     if (!removed) { toast('记录不存在'); return; }
     clearTimeout(pendingPhotoCleanup);
-    const imgs = removed.images || [];
-    pendingPhotoCleanup = setTimeout(() => { if (S.photos.available()) S.photos.removeMany(imgs); }, 6000);
+    const imgs = (removed.images || []).slice();
+    if (removed.coverPhotoId && !imgs.includes(removed.coverPhotoId)) imgs.push(removed.coverPhotoId);
+    const attachments = removed.files || [];
+    pendingPhotoCleanup = setTimeout(() => {
+      if (S.photos.available()) S.photos.removeMany(imgs);
+      if (S.files.available()) S.files.removeMany(attachments);
+    }, 6000);
     S.clearDraft(module, ED.draftKey);
     go(module === 'travel' ? '/m/travel' : '/m/' + module);
     setTimeout(() => toast('已删除', '撤销', () => {
@@ -1131,18 +1291,26 @@ function ocrSave(mod) {
 /* =====================================================================
  * 设置（导出/导入为真实功能）
  * ===================================================================== */
-const SW = { backup: true, applock: true, bio: true, hidepreview: true, periodlock: true, noteshome: true };
+const SW = { backup: true, applock: true, bio: true, hidepreview: true };
 function pgSettings() {
   const s = (k, l, sub) => `<div class="row" onclick="SW.${k}=!SW.${k};render()"><div class="r-main"><div class="r-title" style="font-size:15.5px">${l}</div>${sub ? `<div class="r-sub">${sub}</div>` : ''}</div><div class="sw ${SW[k] ? 'on' : ''}"></div></div>`;
   const ln = (l, v, act) => `<div class="row" onclick="${act || ''}"><div class="r-main"><div class="r-title" style="font-size:15.5px">${l}</div></div><span class="r-val">${v || ''}</span><span class="chev">${ICONS.chev}</span></div>`;
   const total = S.moduleKeys().reduce((n, m) => n + S.list(m).length, 0);
+  const cs = S.cloud.status();
+  const syncText = cs.syncing ? '正在同步…' : cs.lastError ? '同步失败：' + cs.lastError : cs.lastSyncAt ? '上次同步 ' + timeAgo(cs.lastSyncAt) : '尚未同步';
   return `<div class="page">${head('设置')}
   <div class="largetitle">设置</div>
+  <h5 class="gap">账号与多设备同步</h5><div class="group">
+    ${cs.signedIn ? `<div class="row"><div class="r-main"><div class="r-title" style="font-size:15.5px">${esc(cs.email)}</div><div class="r-sub">${esc(syncText)}</div></div><span class="tag">已登录</span></div>
+      ${ln('立即同步', '手机 · 电脑 · 附件', 'cloudSyncNow()')}${ln('退出登录', '', 'cloudLogout()')}` :
+      `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="current-password" placeholder="密码"><button onclick="cloudLogin()">登录并同步</button></div>
+      <p class="notice" style="margin:10px">登录后，记录、图片、音频和附件会与服务端合并，并在同一账号的其他设备上可用。</p>`}
+  </div>
   <h5 class="gap">备份与迁移</h5><div class="group">
     ${ln('导出全部数据', 'JSON · ' + total + ' 条记录', 'doExport()')}
     ${ln('导入备份', '校验版本 · 失败不写入', "document.getElementById('impfile').click()")}
-    ${s('backup', '自动备份', '仅保存到本机你授权的目录，不上传云端')}
-    ${ln('数据规模', total + ' 条记录 · 10 个模块隔离存储')}
+    ${s('backup', '本地备份提醒', '云同步不等于离线备份，建议定期导出 JSON')}
+    ${ln('数据规模', total + ' 条记录 · 8 个模块隔离存储')}
   </div>
   <input type="file" id="impfile" accept=".json" style="display:none" onchange="doImport(this)">
   <h5 class="gap">存储</h5><div class="group">
@@ -1154,20 +1322,27 @@ function pgSettings() {
     ${s('bio', '生物识别', 'Face ID / 指纹，失败时可用设备密码')}
     ${ln('自动锁定时间', '5 分钟')}
     ${s('hidepreview', '后台任务预览隐藏', '多任务界面模糊内容')}
-    ${s('periodlock', '敏感模块独立锁', '随笔 · 经期 · 人际关系')}
-    ${ln('隐私说明', '数据仅存本机', "toast('原型数据存于浏览器本地；原生版存 App 私有目录，OCR 全部在设备端')")}
+    ${ln('隐私说明', cs.signedIn ? '本地缓存 + 私有服务端' : '尚未启用云同步', "toast('附件仅在登录后上传到你配置的私有服务端；密码与服务端密钥不会写入前端代码')")}
   </div>
-  <h5 class="gap">首页</h5><div class="group">
-    ${s('noteshome', '首页显示经期预测', '可关闭；预测始终标注「估算」')}
-    ${ln('模块管理', '排序 · 固定 · 隐藏', "go('/modules')")}
-  </div>
+  <h5 class="gap">首页</h5><div class="group">${ln('模块管理', '固定 · 隐藏', "go('/modules')")}</div>
   <h5 class="gap">通用</h5><div class="group">
     ${ln('恢复默认设置', '', "confirmDanger('恢复默认设置？','你的数据不会被删除。','恢复',()=>toast('已恢复默认设置'))")}
   </div>
   <button class="dangerbtn" onclick="confirmDanger('清空全部数据？','将删除全部模块记录（图片缓存随后清理）。建议先导出备份。','清空全部数据',wipeAll)">清空全部数据</button>
-  <p class="notice">原型阶段：记录数据导出为 JSON；图片的原生完整备份（数据库+附件打包）将在 Flutter 版本中实现。卸载 App / 清除浏览器数据会删除未备份内容，请定期导出。</p>
+  <p class="notice">记录数据仍可导出 JSON 作为独立备份。图片与附件在登录后保存到私有服务端持久盘；部署时必须配置持久化 WORKBENCH_DATA_DIR。</p>
   </div>`;
 }
+async function cloudLogin() {
+  const email = document.getElementById('cloudemail'), password = document.getElementById('cloudpassword');
+  if (!email || !password || !email.value.trim() || !password.value) { toast('请输入邮箱和密码'); return; }
+  try { toast('正在登录并合并数据…'); await S.cloud.login(email.value.trim(), password.value); render(); toast('登录成功，多设备数据已同步'); }
+  catch (e) { toast(e.message === 'invalid_credentials' ? '账号或密码错误' : '登录失败：' + e.message); }
+}
+async function cloudSyncNow() {
+  try { toast('正在同步…'); await S.cloud.syncNow(); render(); toast('同步完成'); }
+  catch (e) { render(); toast('同步失败：' + e.message); }
+}
+function cloudLogout() { S.cloud.logout(); render(); toast('已退出云同步，本机缓存保留'); }
 function doExport() {
   const json = S.exportAll();
   const blob = new Blob([json], { type: 'application/json' });
@@ -1195,7 +1370,13 @@ function doImport(input) {
   input.value = '';
 }
 function wipeAll() {
-  S.moduleKeys().forEach(m => localStorage.removeItem('pw_records_' + m));
+  const photoIds = [], fileRefs = [];
+  S.moduleKeys().forEach(m => S.list(m).slice().forEach(item => {
+    photoIds.push(...(item.images || [])); if (item.coverPhotoId) photoIds.push(item.coverPhotoId);
+    fileRefs.push(...(item.files || [])); S.remove(m, item.id);
+  }));
+  S.photos.removeMany(Array.from(new Set(photoIds))).catch(() => {});
+  S.files.removeMany(fileRefs).catch(() => {});
   toast('已清空全部记录');
   render();
 }
@@ -1226,5 +1407,8 @@ function toast(txt, act, cb) {
 function clearToast() { const t = document.getElementById('toast'); if (t) t.classList.remove('show'); }
 
 /* ---------- 启动 ---------- */
+S.migrate();
 S.seed();
 render();
+S.cloud.init().then(remote => { if (remote) render(); });
+window.addEventListener('online', () => S.cloud.syncNow().then(() => render()).catch(() => {}));

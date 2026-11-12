@@ -1,29 +1,80 @@
-# 私人工作台（Web 原型 / PWA）
+# 私人工作台
 
-本地优先、离线可用的私人收纳工作台 Web 原型。10 个模块：书籍 / 英语（雅思）/ 电影 / 穿搭 /
-找工作 / Prompt & Skills / 生活 / 随笔 / 经期 / 旅行。
+一个 Mobile First 的本地优先 PWA，支持手机与电脑使用同一账号同步记录、图片、音频和附件。
 
-**旅行模块**含完整照片相册：双列瀑布流、全屏查看器（左右滑动 · 双指缩放 · 双击放大）、
-批量选择/删除、缩略图懒加载。照片以 Blob 存 IndexedDB（缩略图 + 原图独立副本）。
+现役空间：书籍 / 英语 / 电影 / 穿搭 / 找工作 / Prompt & Skills / 生活 / 旅行。「随笔」和「经期」已从产品、路由、表单及同步模型移除；升级时旧数据会先存入可恢复的本地归档。
 
-## 手机安装（添加到主屏幕）
+## 架构
 
-1. 用手机浏览器（iOS Safari / Android Chrome）打开本站地址
-2. iOS：分享 → **添加到主屏幕**；Android：菜单 → **添加到主屏幕 / 安装应用**
-3. 添加后从桌面图标启动，全屏独立运行，**离线可用**（Service Worker 缓存外壳）
+- `index.html`：页面外壳、设计令牌、响应式布局、iOS Safe Area 和 PWA meta。
+- `app.js`：Hash 路由、界面组件、表单交互、图片预览、拖拽排序、封面和同步账号界面。
+- `store.js`：记录模型、表单定义、迁移、`localStorage` 离线缓存、IndexedDB 二进制资产和云同步客户端。
+- `server.js`：零依赖 Node.js 静态服务器 + 账号验证 + 记录合并 + 文件存储 API。
+- `config.js`：可公开的前端运行时配置，只放 API 地址，不得放密码或密钥。
+- `manifest.json` / `sw.js`：可安装 PWA 和应用外壳离线缓存。
 
-> 数据仅存本机（localStorage + IndexedDB），不上传任何服务器；清除浏览器数据会删除未备份内容。
+项目不需要打包工具或 npm 依赖。运行环境为 Node.js 20+。
+
+## 数据模型
+
+| 空间 | 记录特征 |
+| --- | --- |
+| 书籍 / 电影 / 找工作 / Prompt / 生活 | 各自独立表单与 `pw_records_<module>` 命名空间 |
+| 英语 | 词汇及 `listening` / `speaking` / `reading` / `writing` 四种 `subtype`，每种独立表单 |
+| 穿搭 | 每条记录是风格 `{ id, name, images[], order }`，`images` 保存稳定文件 ID 顺序 |
+| 旅行 | `gone` / `want` 两种 `ttype`；去过的地点含 `images[]` 和独立 `coverPhotoId` |
+
+每条记录都有稳定 `id`、`createdAt`、`updatedAt`。客户端与服务端依据 `updatedAt` 合并；删除操作保存墓碑时间，防止离线旧设备把已删记录重新上传。
 
 ## 本地运行
 
 ```bash
-node server.js   # 或任意静态服务器指向本目录，打开 http://localhost:8797
+cp .env.example .env  # 仅作参考；server.js 读取进程环境变量
+WORKBENCH_ADMIN_EMAIL="you@example.com" \
+WORKBENCH_ADMIN_PASSWORD="a-long-unique-password" \
+WORKBENCH_SESSION_SECRET="at-least-32-random-characters" \
+WORKBENCH_DATA_DIR="$(pwd)/.data" \
+node server.js
 ```
 
-## 结构
+打开 `http://localhost:8797`。前后端同源时 `config.js` 保持 `apiBase: ''` 即可。
 
-- `index.html` 外壳 + 设计系统；`store.js` 数据层（模块隔离存储/草稿/备份导出导入）
-- `app.js` UI 与路由（含旅行相册 v0.3 与全屏查看器）
-- `manifest.json` + `sw.js` + 图标：PWA（可安装、离线）
-- `tests/` 数据层自动化测试（Node 直接运行）
-- `gen-icon.js` 图标生成脚本（纯 Node，无依赖）
+## 云端部署必需配置
+
+1. 使用支持长时运行 Node.js 进程的主机，启动命令为 `node server.js`。
+2. 挂载持久化磁盘，并将 `WORKBENCH_DATA_DIR` 指向该磁盘。不要使用会在重启时清空的临时目录。
+3. 在主机的秘密/环境变量中配置：
+   - `WORKBENCH_ADMIN_EMAIL`
+   - `WORKBENCH_ADMIN_PASSWORD`
+   - `WORKBENCH_SESSION_SECRET`（至少 32 个随机字符）
+   - `WORKBENCH_DATA_DIR`
+   - `PORT` / `HOST`（按云主机要求）
+4. 必须使用 HTTPS，否则 PWA、Service Worker 和移动端文件能力不可靠。
+5. 如果前端与 API 分开部署：将 `config.js` 的 `apiBase` 改为 API HTTPS 根地址，并把前端精确 Origin 加入 `WORKBENCH_ALLOWED_ORIGINS`。
+
+不要把真实 `.env`、密码、Session Secret 或持久化数据目录提交到 Git。
+
+## 升级与备份
+
+- 首次启动 v2 时，旧「随笔/经期」记录会归档到 `pw_removed_modules_backup_v2`。
+- 旧文字型穿搭会归档到 `pw_outfit_legacy_backup_v2`，并按旧风格转成 Moodboard 分类。
+- 迁移幂等，重复启动不会覆盖新数据。
+- 设置页仍可导出/ 导入 JSON 记录备份；v2 导入兼容旧 v1 JSON。二进制附件应通过服务端持久磁盘另行备份。
+
+## 测试
+
+```bash
+node --check app.js
+node --check store.js
+node --check server.js
+node tests/store.test.mjs
+node tests/album.test.mjs
+node tests/migration.test.mjs
+node tests/sync.test.mjs
+```
+
+`sync.test.mjs` 会临时启动本机 API，验证登录、两设备合并、删除墓碑、二进制文件往返和重启后持久化。
+
+## 真机验收
+
+桌面浏览器和模拟视口不能完整复现 iOS 的 Safe Area、灵动岛、键盘、底部 Home Indicator、回弹滚动和触摸长按。发布 HTTPS 后，请在 iPhone 17 基础版 Safari 与「添加到主屏幕」两种模式各执行一次：安全区、输入键盘、相册多选、长按拖拽、音频播放与前后台切换。

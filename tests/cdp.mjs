@@ -5,7 +5,7 @@
  *       直到出现 PASS/FAIL → 截图 → 输出 banner 文本并按结果退出。
  * ===================================================================== */
 import { spawn } from 'node:child_process';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -14,7 +14,10 @@ const shotPath = process.argv[3] || '';
 const maxWait = Number(process.argv[4] || 45000);
 if (!url) { console.error('用法: node cdp.mjs <url> [screenshot.png] [maxWaitMs]'); process.exit(2); }
 
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME = process.env.CHROME_PATH || (process.platform === 'darwin'
+  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  : process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '/usr/bin/google-chrome');
+if (!existsSync(CHROME)) { console.log('SKIP: Chrome 未安装，可通过 CHROME_PATH 指定'); process.exit(0); }
 const profile = process.env.CDP_PROFILE || mkdtempSync(join(tmpdir(), 'cdp-prof-'));
 const keepProfile = !!process.env.CDP_PROFILE;
 const proc = spawn(CHROME, [

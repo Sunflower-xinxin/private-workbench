@@ -1,7 +1,7 @@
 {
   "name": "私人工作台",
   "short_name": "工作台",
-  "description": "本地优先、离线可用的私人收纳工作台（书籍 · 英语 · 电影 · 穿搭 · 旅行 …）",
+  "description": "本地优先、支持多设备同步的私人生活工作台",
   "lang": "zh-CN",
   "start_url": "./index.html",
   "scope": "./",
