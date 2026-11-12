@@ -1,0 +1,41 @@
+<!doctype html><meta charset="utf-8"><title>Full backup browser test</title>
+<div id="banner">RUNNING</div>
+<script src="../backup-codec.js"></script><script src="../store.js"></script>
+<script>
+(async () => {
+  try {
+    localStorage.clear();
+    const S = window.PWStore; S.migrate();
+    const fileRef = await S.files.add('english:backup-test', new File(['audio-fixture'], 'practice.mp3', { type: 'audio/mpeg' }));
+    const fileRecord = S.save('english', { topic: 'Backup speaking', files: [fileRef] }, 'english_speaking').item;
+
+    const photoId = 'id_photo_backup_test';
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open('pw-photos', 2); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').put({ id: photoId, ownerKey: 'travel:backup-test', blob: new Blob(['photo-original'], { type: 'image/jpeg' }), thumb: new Blob(['photo-thumb'], { type: 'image/jpeg' }), type: 'image/jpeg', name: 'trip.jpg', ts: Date.now() });
+      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+    });
+    const tripRecord = S.putRaw('travel', { id: 'id_trip_backup_test', destination: '完整备份测试', images: [photoId], createdAt: Date.now() });
+
+    const created = await S.localBackup.create();
+    if (created.photos !== 1 || created.files !== 1) throw new Error('asset counts mismatch');
+    await S.photos.remove(photoId); await S.files.remove(fileRef); S.remove('travel', tripRecord.id); S.remove('english', fileRecord.id);
+    const restored = await S.localBackup.restore(created.blob);
+    const photo = await S.photos.get(photoId), file = await S.files.get(fileRef);
+    if (!S.get('travel', tripRecord.id) || !S.get('english', fileRecord.id)) throw new Error('records not restored');
+    if (!photo || await photo.blob.text() !== 'photo-original' || await photo.thumb.text() !== 'photo-thumb') throw new Error('photo not restored');
+    if (!file || await file.blob.text() !== 'audio-fixture') throw new Error('file not restored');
+    if (restored.photos !== 1 || restored.files !== 1) throw new Error('restore counts mismatch');
+
+    const bad = new Uint8Array(await created.blob.arrayBuffer()); bad[bad.length - 1] ^= 0xff;
+    let rejected = false; try { await S.localBackup.restore(new Blob([bad])); } catch (_) { rejected = true; }
+    if (!rejected) throw new Error('corruption was accepted');
+    document.getElementById('banner').textContent = 'PASS | records + photo + thumb + audio restored; corruption rejected';
+  } catch (error) {
+    document.getElementById('banner').textContent = 'FAIL | ' + (error && error.stack || error);
+  }
+})();
+</script>

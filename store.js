@@ -327,27 +327,49 @@ function exportAll() {
   moduleKeys().forEach(m => { data[m] = list(m); });
   return JSON.stringify({ version: BACKUP_VERSION, exportedAt: new Date().toISOString(), data });
 }
-function importAll(json) {
+function prepareImport(json) {
   let parsed;
   try { parsed = JSON.parse(json); } catch (e) { throw new Error('备份文件损坏：不是合法 JSON'); }
   if (!parsed || typeof parsed !== 'object' || ![1, BACKUP_VERSION].includes(parsed.version) || typeof parsed.data !== 'object') {
     throw new Error('备份文件损坏或版本不兼容');
   }
-  let count = 0, modules = 0;
+  const operations = []; let count = 0;
   Object.keys(parsed.data).forEach(m => {
     if (!moduleKeys().includes(m)) return;
     if (!Array.isArray(parsed.data[m])) throw new Error('备份数据格式错误：' + m);
     const nowTs = Date.now();
-    const incoming = parsed.data[m].map(item => Object.assign({}, item, { module: m, updatedAt: nowTs }));
-    const incomingIds = new Set(incoming.map(item => item.id));
-    const deleted = read(DELETED_KEY(m), {});
-    list(m).forEach(item => { if (!incomingIds.has(item.id)) deleted[item.id] = nowTs; });
-    incoming.forEach(item => { delete deleted[item.id]; });
-    write(REC_KEY(m), incoming); write(DELETED_KEY(m), deleted);
-    count += incoming.length; modules++;
+    const incoming = parsed.data[m].map(item => {
+      if (!item || typeof item !== 'object' || !item.id) throw new Error('备份记录格式错误：' + m);
+      return Object.assign({}, item, { module: m, updatedAt: nowTs });
+    });
+    operations.push({ module: m, incoming }); count += incoming.length;
   });
+  return { parsed, operations, records: count, modules: operations.length };
+}
+function applyPreparedImport(prepared) {
+  const previous = new Map();
+  prepared.operations.forEach(op => {
+    previous.set(REC_KEY(op.module), ls().getItem(REC_KEY(op.module)));
+    previous.set(DELETED_KEY(op.module), ls().getItem(DELETED_KEY(op.module)));
+  });
+  try {
+    prepared.operations.forEach(op => {
+      const m = op.module, incoming = op.incoming, nowTs = Date.now();
+      const incomingIds = new Set(incoming.map(item => item.id));
+      const deleted = read(DELETED_KEY(m), {});
+      list(m).forEach(item => { if (!incomingIds.has(item.id)) deleted[item.id] = nowTs; });
+      incoming.forEach(item => { delete deleted[item.id]; });
+      write(REC_KEY(m), incoming); write(DELETED_KEY(m), deleted);
+    });
+  } catch (error) {
+    previous.forEach((raw, key) => { if (raw == null) ls().removeItem(key); else ls().setItem(key, raw); });
+    throw error;
+  }
   cloud.schedule();
-  return { modules, records: count };
+  return { modules: prepared.modules, records: prepared.records };
+}
+function importAll(json) {
+  return applyPreparedImport(prepareImport(json));
 }
 
 /* =====================================================================
@@ -471,6 +493,18 @@ const assetDB = {
       req.onsuccess = () => res(req.result || null);
       req.onerror = e => rej(e.target.error);
     });
+  },
+  async batchPut(photoRecords, fileRecords) {
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(['photos', 'files'], 'readwrite');
+      const photoStore = tx.objectStore('photos'), fileStore = tx.objectStore('files');
+      (photoRecords || []).forEach(record => photoStore.put(record));
+      (fileRecords || []).forEach(record => fileStore.put(record));
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => rej(tx.error || new Error('附件写入失败'));
+      tx.onabort = () => rej(tx.error || new Error('附件写入已取消'));
+    });
   }
 };
 
@@ -535,6 +569,127 @@ const files = {
   },
   async removeMany(refs) { for (const ref of (refs || [])) { try { await this.remove(ref); } catch (_) {} } }
 };
+
+/* =====================================================================
+ * Complete local backup: records + photos + audio/files in one .pwb file.
+ * The codec validates every binary payload before restore mutates storage.
+ * ===================================================================== */
+function referencedAssetIds(records) {
+  const photoIds = new Set(), fileIds = new Set();
+  const data = records && records.data || {};
+  moduleKeys().forEach(m => (Array.isArray(data[m]) ? data[m] : []).forEach(item => {
+    (Array.isArray(item.images) ? item.images : []).forEach(id => { if (id) photoIds.add(String(id)); });
+    if (item.coverPhotoId) photoIds.add(String(item.coverPhotoId));
+    (Array.isArray(item.files) ? item.files : []).forEach(ref => {
+      const id = typeof ref === 'string' ? ref : ref && ref.id;
+      if (id) fileIds.add(String(id));
+    });
+  }));
+  return { photoIds, fileIds };
+}
+function requireCodec() {
+  if (!global.PWBackupCodec) throw new Error('完整备份组件未加载');
+  return global.PWBackupCodec;
+}
+function assetMetaValid(item) {
+  return item && typeof item === 'object' && typeof item.id === 'string' && item.id.length > 0;
+}
+
+const localBackup = {
+  reminderEnabled() { return read('pw_backup_reminder_enabled', true) !== false; },
+  setReminderEnabled(value) { write('pw_backup_reminder_enabled', !!value); return !!value; },
+  reminderDays() { const n = Number(read('pw_backup_reminder_days', 7)); return [7, 14, 30].includes(n) ? n : 7; },
+  cycleReminderDays() {
+    const values = [7, 14, 30], current = this.reminderDays();
+    const next = values[(values.indexOf(current) + 1) % values.length]; write('pw_backup_reminder_days', next); return next;
+  },
+  lastBackupAt() { return Number(read('pw_last_full_backup_at', 0)) || 0; },
+  lastRestoreAt() { return Number(read('pw_last_full_restore_at', 0)) || 0; },
+  markSaved() { const ts = Date.now(); write('pw_last_full_backup_at', ts); return ts; },
+  markReminded() { write('pw_last_backup_reminder_at', Date.now()); },
+  shouldRemind() {
+    if (!this.reminderEnabled()) return false;
+    const base = Math.max(this.lastBackupAt(), Number(read('pw_last_backup_reminder_at', 0)) || 0);
+    return !base || Date.now() - base >= this.reminderDays() * 86400000;
+  },
+  async create() {
+    const codec = requireCodec();
+    const records = JSON.parse(exportAll());
+    const refs = referencedAssetIds(records);
+    if ((refs.photoIds.size || refs.fileIds.size) && !assetDB.available()) throw new Error('当前浏览器不支持附件备份');
+    const entries = [], photoMeta = [], fileMeta = [];
+    let binaryBytes = 0;
+    for (const id of refs.photoIds) {
+      const record = await assetDB.action('photos', 'readonly', 'get', id);
+      if (!record || !(record.blob instanceof Blob)) throw new Error('完整备份失败：找不到照片 ' + id);
+      const blobKey = 'photos/' + id + '/original', thumbKey = 'photos/' + id + '/thumb';
+      entries.push({ key: blobKey, blob: record.blob }); binaryBytes += record.blob.size;
+      if (record.thumb instanceof Blob) { entries.push({ key: thumbKey, blob: record.thumb }); binaryBytes += record.thumb.size; }
+      photoMeta.push({ id, ownerKey: record.ownerKey || '', type: record.type || record.blob.type, name: record.name || '', ts: Number(record.ts) || 0, blobKey, thumbKey: record.thumb instanceof Blob ? thumbKey : '' });
+    }
+    for (const id of refs.fileIds) {
+      const record = await assetDB.action('files', 'readonly', 'get', id);
+      if (!record || !(record.blob instanceof Blob)) throw new Error('完整备份失败：找不到附件 ' + id);
+      const blobKey = 'files/' + id + '/original'; entries.push({ key: blobKey, blob: record.blob }); binaryBytes += record.blob.size;
+      fileMeta.push({ id, ownerKey: record.ownerKey || '', type: record.type || record.blob.type, name: record.name || '', size: record.blob.size, ts: Number(record.ts) || 0, blobKey });
+    }
+    const manifest = {
+      format: 'private-workbench-full-backup', version: 1, exportedAt: new Date().toISOString(),
+      records, assets: { photos: photoMeta, files: fileMeta }
+    };
+    const blob = await codec.pack(manifest, entries);
+    return { blob, records: Object.values(records.data).reduce((n, arr) => n + arr.length, 0), photos: photoMeta.length, files: fileMeta.length, binaryBytes };
+  },
+  async restore(file) {
+    const unpacked = await requireCodec().unpack(file);
+    const manifest = unpacked.manifest;
+    if (manifest.format !== 'private-workbench-full-backup' || manifest.version !== 1 || !manifest.records || !manifest.assets) {
+      throw new Error('完整备份版本不兼容');
+    }
+    const prepared = prepareImport(JSON.stringify(manifest.records));
+    const photoMeta = manifest.assets.photos, fileMeta = manifest.assets.files;
+    if (!Array.isArray(photoMeta) || !Array.isArray(fileMeta)) throw new Error('完整备份附件清单无效');
+    if ((photoMeta.length || fileMeta.length) && !assetDB.available()) throw new Error('当前浏览器不支持附件恢复');
+    const photoIds = new Set(), fileIds = new Set(), photoRecords = [], fileRecords = [];
+    photoMeta.forEach(meta => {
+      if (!assetMetaValid(meta) || photoIds.has(meta.id) || !unpacked.entries.has(meta.blobKey)) throw new Error('完整备份照片清单无效');
+      photoIds.add(meta.id);
+      const blob = unpacked.entries.get(meta.blobKey).blob;
+      const thumb = meta.thumbKey && unpacked.entries.has(meta.thumbKey) ? unpacked.entries.get(meta.thumbKey).blob : blob;
+      photoRecords.push({ id: meta.id, ownerKey: meta.ownerKey || '', blob, thumb, type: meta.type || blob.type || 'image/jpeg', name: meta.name || '', ts: Number(meta.ts) || Date.now() });
+    });
+    fileMeta.forEach(meta => {
+      if (!assetMetaValid(meta) || fileIds.has(meta.id) || !unpacked.entries.has(meta.blobKey)) throw new Error('完整备份附件清单无效');
+      fileIds.add(meta.id);
+      const blob = unpacked.entries.get(meta.blobKey).blob;
+      fileRecords.push({ id: meta.id, ownerKey: meta.ownerKey || '', blob, type: meta.type || blob.type || 'application/octet-stream', name: meta.name || '附件', size: blob.size, ts: Number(meta.ts) || Date.now() });
+    });
+    const refs = referencedAssetIds(manifest.records);
+    refs.photoIds.forEach(id => { if (!photoIds.has(id)) throw new Error('完整备份缺少照片：' + id); });
+    refs.fileIds.forEach(id => { if (!fileIds.has(id)) throw new Error('完整备份缺少附件：' + id); });
+    if (photoRecords.length || fileRecords.length) await assetDB.batchPut(photoRecords, fileRecords);
+    const result = applyPreparedImport(prepared);
+    write('pw_last_full_restore_at', Date.now());
+    return Object.assign(result, { photos: photoRecords.length, files: fileRecords.length });
+  }
+};
+
+const deviceStorage = {
+  async inspect() {
+    const manager = global.navigator && global.navigator.storage;
+    if (!manager) return { supported: false, persistent: false, usage: 0, quota: 0 };
+    let persistent = false, estimate = {};
+    try { if (manager.persisted) persistent = await manager.persisted(); } catch (_) {}
+    try { if (manager.estimate) estimate = await manager.estimate() || {}; } catch (_) {}
+    return { supported: !!manager.persist, persistent, usage: Number(estimate.usage) || 0, quota: Number(estimate.quota) || 0 };
+  },
+  async requestPersistent() {
+    const manager = global.navigator && global.navigator.storage;
+    if (!manager || !manager.persist) return false;
+    try { return !!(await manager.persist()); } catch (_) { return false; }
+  }
+};
+
 function downscale(file, maxSide, quality) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file);
@@ -563,10 +718,11 @@ const cloud = {
   timer: null,
   syncing: false,
   lastError: '',
+  enabled() { return !!(global.WORKBENCH_CONFIG && global.WORKBENCH_CONFIG.cloudEnabled === true); },
   apiBase() { return String((global.WORKBENCH_CONFIG && global.WORKBENCH_CONFIG.apiBase) || '').replace(/\/$/, ''); },
   token() { return read('pw_cloud_token', ''); },
   email() { return read('pw_cloud_email', ''); },
-  signedIn() { return !!this.token(); },
+  signedIn() { return this.enabled() && !!this.token(); },
   status() { return { signedIn: this.signedIn(), email: this.email(), syncing: this.syncing, lastError: this.lastError, lastSyncAt: read('pw_last_sync_at', 0) }; },
   emit() {
     if (typeof global.dispatchEvent === 'function' && typeof global.CustomEvent === 'function') {
@@ -697,7 +853,7 @@ const store = {
   FORMS, moduleKeys, hasContent, fieldHas,
   list, get, save, remove, restore, putRaw,
   setDraft, getDraft, clearDraft,
-  exportAll, importAll, migrate, seed, photos, files, cloud,
+  exportAll, importAll, migrate, seed, photos, files, cloud, localBackup, deviceStorage,
   _uid: uid
 };
 global.PWStore = store;

@@ -1291,34 +1291,45 @@ function ocrSave(mod) {
 /* =====================================================================
  * 设置（导出/导入为真实功能）
  * ===================================================================== */
-const SW = { backup: true, applock: true, bio: true, hidepreview: true };
+const SW = { applock: true, bio: true, hidepreview: true };
+let storageState = { loading: true, pending: false, supported: false, persistent: false, usage: 0, quota: 0 };
+let pendingBackupFile = null;
+function formatBytes(value) {
+  const n = Number(value) || 0;
+  if (n < 1024) return n + ' B';
+  const units = ['KB', 'MB', 'GB', 'TB']; let size = n / 1024, i = 0;
+  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+  return (size >= 10 ? size.toFixed(0) : size.toFixed(1)) + ' ' + units[i];
+}
 function pgSettings() {
   const s = (k, l, sub) => `<div class="row" onclick="SW.${k}=!SW.${k};render()"><div class="r-main"><div class="r-title" style="font-size:15.5px">${l}</div>${sub ? `<div class="r-sub">${sub}</div>` : ''}</div><div class="sw ${SW[k] ? 'on' : ''}"></div></div>`;
-  const ln = (l, v, act) => `<div class="row" onclick="${act || ''}"><div class="r-main"><div class="r-title" style="font-size:15.5px">${l}</div></div><span class="r-val">${v || ''}</span><span class="chev">${ICONS.chev}</span></div>`;
+  const ln = (l, v, act) => `<div class="row" ${act ? `onclick="${act}"` : ''}><div class="r-main"><div class="r-title" style="font-size:15.5px">${l}</div></div><span class="r-val">${v || ''}</span>${act ? `<span class="chev">${ICONS.chev}</span>` : ''}</div>`;
   const total = S.moduleKeys().reduce((n, m) => n + S.list(m).length, 0);
-  const cs = S.cloud.status();
-  const syncText = cs.syncing ? '正在同步…' : cs.lastError ? '同步失败：' + cs.lastError : cs.lastSyncAt ? '上次同步 ' + timeAgo(cs.lastSyncAt) : '尚未同步';
+  const lastBackup = S.localBackup.lastBackupAt();
+  const reminderOn = S.localBackup.reminderEnabled();
+  const storageStatus = storageState.loading ? '正在读取…' : storageState.persistent ? '已开启持久存储' : storageState.supported ? '尚未获得持久保护' : '浏览器不支持主动请求';
+  const storageUsage = storageState.loading ? '' : storageState.quota ? `${formatBytes(storageState.usage)} / ${formatBytes(storageState.quota)}` : formatBytes(storageState.usage);
+  if (storageState.loading && !storageState.pending) { storageState.pending = true; setTimeout(refreshStorageInfo, 0); }
   return `<div class="page">${head('设置')}
   <div class="largetitle">设置</div>
-  <h5 class="gap">账号与多设备同步</h5><div class="group">
-    ${cs.signedIn ? `<div class="row"><div class="r-main"><div class="r-title" style="font-size:15.5px">${esc(cs.email)}</div><div class="r-sub">${esc(syncText)}</div></div><span class="tag">已登录</span></div>
-      ${ln('立即同步', '手机 · 电脑 · 附件', 'cloudSyncNow()')}${ln('退出登录', '', 'cloudLogout()')}` :
-      `<div class="sync-auth-tabs" role="tablist" aria-label="账号操作"><button class="${ui.authMode === 'login' ? 'on' : ''}" onclick="setCloudAuthMode('login')">登录</button><button class="${ui.authMode === 'register' ? 'on' : ''}" onclick="setCloudAuthMode('register')">注册</button></div>
-      ${ui.authMode === 'register'
-        ? `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" enterkeyhint="next" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="new-password" enterkeyhint="next" placeholder="设置密码（至少 8 位）"><input id="cloudpassword2" type="password" autocomplete="new-password" enterkeyhint="done" placeholder="再次输入密码" onkeydown="if(event.key==='Enter')cloudRegister()"><button onclick="cloudRegister()">创建账号并同步</button></div>
-        <p class="notice" style="margin:10px">首次注册会创建这个工作台的唯一私人账号。创建后注册入口将关闭，其他设备请使用同一邮箱和密码登录。</p>`
-        : `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" enterkeyhint="next" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="current-password" enterkeyhint="done" placeholder="密码" onkeydown="if(event.key==='Enter')cloudLogin()"><button onclick="cloudLogin()">登录并同步</button></div>
-        <p class="notice" style="margin:10px">登录后，记录、图片、音频和附件会与服务端合并，并在同一账号的其他设备上可用。</p>`}`}
+  <h5 class="gap">本机数据保护</h5><div class="group">
+    <div class="row"><div class="r-main"><div class="r-title" style="font-size:15.5px">存储状态</div><div class="r-sub" id="storageusage">${storageUsage}</div></div><span class="tag" id="storagestatus">${storageStatus}</span></div>
+    ${!storageState.loading && !storageState.persistent && storageState.supported ? ln('请求持久存储保护', '降低系统自动清理风险', 'requestPersistentStorage()') : ''}
+    <div class="row" onclick="toggleBackupReminder()"><div class="r-main"><div class="r-title" style="font-size:15.5px">定期备份提醒</div><div class="r-sub">${reminderOn ? `每 ${S.localBackup.reminderDays()} 天提醒一次` : '已关闭'}</div></div><div class="sw ${reminderOn ? 'on' : ''}"></div></div>
+    ${reminderOn ? ln('提醒间隔', S.localBackup.reminderDays() + ' 天', 'cycleBackupReminderDays()') : ''}
   </div>
-  <h5 class="gap">备份与迁移</h5><div class="group">
-    ${ln('导出全部数据', 'JSON · ' + total + ' 条记录', 'doExport()')}
-    ${ln('导入备份', '校验版本 · 失败不写入', "document.getElementById('impfile').click()")}
-    ${s('backup', '本地备份提醒', '云同步不等于离线备份，建议定期导出 JSON')}
-    ${ln('数据规模', total + ' 条记录 · 8 个模块隔离存储')}
+  <p class="notice">持久存储可降低 iOS 在空间紧张时自动清理数据的概率，但不能替代备份。完整备份请保存到 iCloud Drive、文件 App 或电脑。</p>
+  <h5 class="gap">完整备份</h5><div class="group">
+    ${ln('导出完整备份', '记录 · 图片 · 录音 · 附件', 'doFullExport()')}
+    ${ln('从文件恢复', '选择 .pwb 备份文件', "document.getElementById('fullimpfile').click()")}
+    ${ln('上次完整备份', lastBackup ? timeAgo(lastBackup) : '从未备份')}
+    ${ln('导出旧版文字 JSON', total + ' 条记录', 'doExport()')}
+    ${ln('导入旧版文字 JSON', '不包含图片和附件', "document.getElementById('impfile').click()")}
   </div>
+  <input type="file" id="fullimpfile" accept=".pwb,application/x-private-workbench-backup,application/octet-stream" style="display:none" onchange="chooseFullRestore(this)">
   <input type="file" id="impfile" accept=".json" style="display:none" onchange="doImport(this)">
   <h5 class="gap">存储</h5><div class="group">
-    ${ln('存储空间统计', '记录数据 + 图片（IndexedDB）', "toast('记录存 localStorage；图片存 IndexedDB（Blob，非 Base64）')")}
+    ${ln('数据规模', total + ' 条记录 · 8 个模块隔离存储')}
     ${ln('清理缓存', '缩略图与原图对象 URL 缓存', "clearPhotoCaches();toast('缓存已清理，数据未受影响')")}
   </div>
   <h5 class="gap">隐私与安全</h5><div class="group">
@@ -1326,14 +1337,14 @@ function pgSettings() {
     ${s('bio', '生物识别', 'Face ID / 指纹，失败时可用设备密码')}
     ${ln('自动锁定时间', '5 分钟')}
     ${s('hidepreview', '后台任务预览隐藏', '多任务界面模糊内容')}
-    ${ln('隐私说明', cs.signedIn ? '本地缓存 + 私有服务端' : '尚未启用云同步', "toast('附件仅在登录后上传到你配置的私有服务端；密码与服务端密钥不会写入前端代码')")}
+    ${ln('隐私说明', '所有内容仅保存在本机', "toast('本应用不会把记录、照片、录音或附件上传到云端')")}
   </div>
   <h5 class="gap">首页</h5><div class="group">${ln('模块管理', '固定 · 隐藏', "go('/modules')")}</div>
   <h5 class="gap">通用</h5><div class="group">
     ${ln('恢复默认设置', '', "confirmDanger('恢复默认设置？','你的数据不会被删除。','恢复',()=>toast('已恢复默认设置'))")}
   </div>
-  <button class="dangerbtn" onclick="confirmDanger('清空全部数据？','将删除全部模块记录（图片缓存随后清理）。建议先导出备份。','清空全部数据',wipeAll)">清空全部数据</button>
-  <p class="notice">记录数据仍可导出 JSON 作为独立备份。图片与附件在登录后保存到私有服务端持久盘；部署时必须配置持久化 WORKBENCH_DATA_DIR。</p>
+  <button class="dangerbtn" onclick="confirmDanger('清空全部数据？','将删除全部模块记录和本机附件。建议先导出完整备份。','清空全部数据',wipeAll)">清空全部数据</button>
+  <p class="notice">清除 Safari 网站数据、设备损坏或遗失仍可能造成数据丢失。请定期导出 .pwb 完整备份并保存到本应用之外。</p>
   </div>`;
 }
 async function cloudLogin() {
@@ -1366,6 +1377,82 @@ async function cloudSyncNow() {
   catch (e) { render(); toast('同步失败：' + e.message); }
 }
 function cloudLogout() { S.cloud.logout(); render(); toast('已退出云同步，本机缓存保留'); }
+let backupBusy = false;
+async function refreshStorageInfo() {
+  storageState = Object.assign({ loading: false, pending: false }, await S.deviceStorage.inspect());
+  if ((location.hash || '#/') === '#/settings') render();
+}
+async function requestPersistentStorage() {
+  toast('正在请求持久存储保护…');
+  const granted = await S.deviceStorage.requestPersistent();
+  storageState = Object.assign({ loading: false, pending: false }, await S.deviceStorage.inspect());
+  render();
+  toast(granted || storageState.persistent ? '已开启持久存储保护' : '系统暂未授予；添加到主屏幕并持续使用后可再次尝试');
+}
+function toggleBackupReminder() {
+  const enabled = S.localBackup.setReminderEnabled(!S.localBackup.reminderEnabled());
+  render(); toast(enabled ? '已开启定期备份提醒' : '已关闭备份提醒');
+}
+function cycleBackupReminderDays() {
+  const days = S.localBackup.cycleReminderDays(); render(); toast('将每 ' + days + ' 天提醒备份');
+}
+async function doFullExport() {
+  if (backupBusy) { toast('正在生成备份，请稍候'); return; }
+  backupBusy = true; toast('正在校验并整理完整备份…');
+  try {
+    const result = await S.localBackup.create();
+    const name = 'private-workbench-full-' + new Date().toISOString().slice(0, 10) + '.pwb';
+    pendingBackupFile = typeof File === 'function'
+      ? new File([result.blob], name, { type: result.blob.type })
+      : Object.assign(result.blob, { name });
+    offerBackupFile(result);
+  } catch (error) { toast(error.message || '完整备份生成失败'); }
+  finally { backupBusy = false; }
+}
+function offerBackupFile(result) {
+  const sm = document.getElementById('sheetmask'), sh = document.getElementById('sheet');
+  const summary = `${result.records} 条记录 · ${result.photos} 张照片 · ${result.files} 个附件 · ${formatBytes(result.blob.size)}`;
+  let canShare = false;
+  try { canShare = !!(pendingBackupFile && navigator.share && navigator.canShare && navigator.canShare({ files: [pendingBackupFile] })); } catch (_) {}
+  sh.innerHTML = `<div class="s-group"><div class="s-title">完整备份已生成<br><span style="font-size:12px">${summary}</span></div>
+    ${canShare ? '<button class="s-btn" onclick="sharePreparedBackup()">保存到“文件”或 iCloud Drive</button>' : ''}
+    <button class="s-btn" onclick="downloadPreparedBackup()">下载备份文件</button></div>
+    <div class="s-group"><button class="s-btn s-cancel" onclick="closeSheet()">取消</button></div>`;
+  sm.classList.add('show'); sh.classList.add('show');
+}
+function backupSaved(message) {
+  S.localBackup.markSaved(); pendingBackupFile = null; closeSheet();
+  if ((location.hash || '#/') === '#/settings') render();
+  toast(message);
+}
+function sharePreparedBackup() {
+  if (!pendingBackupFile || !navigator.share) return;
+  navigator.share({ files: [pendingBackupFile], title: '私人工作台完整备份', text: '请保存到 iCloud Drive、文件 App 或其他安全位置。' })
+    .then(() => backupSaved('完整备份已交给系统保存'))
+    .catch(error => { if (error && error.name !== 'AbortError') toast('无法打开分享：' + error.message); });
+}
+function downloadPreparedBackup() {
+  if (!pendingBackupFile) return;
+  const url = URL.createObjectURL(pendingBackupFile), a = document.createElement('a');
+  a.href = url; a.download = pendingBackupFile.name || 'private-workbench-full.pwb'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  backupSaved('完整备份已下载，请将文件移到 iCloud Drive 或电脑');
+}
+function chooseFullRestore(input) {
+  const file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  confirmDanger('从完整备份恢复？', `将用“${file.name}”（${formatBytes(file.size)}）替换当前记录，并恢复其中的图片、录音和附件。`, '校验并恢复', () => performFullRestore(file));
+}
+async function performFullRestore(file) {
+  if (backupBusy) return;
+  backupBusy = true; toast('正在校验完整备份，请勿关闭应用…');
+  try {
+    const result = await S.localBackup.restore(file);
+    clearPhotoCaches(); storageState.loading = true; storageState.pending = false; render();
+    toast(`恢复完成：${result.records} 条记录 · ${result.photos} 张照片 · ${result.files} 个附件`);
+  } catch (error) { toast((error.message || '恢复失败') + '（原记录未被覆盖）'); }
+  finally { backupBusy = false; }
+}
 function doExport() {
   const json = S.exportAll();
   const blob = new Blob([json], { type: 'application/json' });
@@ -1433,5 +1520,18 @@ function clearToast() { const t = document.getElementById('toast'); if (t) t.cla
 S.migrate();
 S.seed();
 render();
-S.cloud.init().then(remote => { if (remote) render(); });
-window.addEventListener('online', () => S.cloud.syncNow().then(() => render()).catch(() => {}));
+S.deviceStorage.inspect().then(async info => {
+  storageState = Object.assign({ loading: false, pending: false }, info);
+  if (info.supported && !info.persistent) {
+    await S.deviceStorage.requestPersistent();
+    storageState = Object.assign({ loading: false, pending: false }, await S.deviceStorage.inspect());
+  }
+  if ((location.hash || '#/') === '#/settings') render();
+}).catch(() => { storageState.loading = false; storageState.pending = false; });
+setTimeout(() => {
+  if (!S.localBackup.shouldRemind()) return;
+  S.localBackup.markReminded();
+  toast('还没有安全的完整备份，建议保存到 iCloud Drive', '现在备份', () => {
+    go('/settings'); setTimeout(doFullExport, 250);
+  });
+}, 1400);

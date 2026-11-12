@@ -256,6 +256,11 @@ t('F4 导入损坏备份：报错且不写入任何数据', () => {
   let threw2 = false;
   try { S.importAll('{"version":99,"data":{}}'); } catch (e) { threw2 = true; }
   ok(threw2, '版本不兼容的备份未报错');
+  const beforeAtomic = JSON.stringify(S.list('books'));
+  let threw3 = false;
+  try { S.importAll(JSON.stringify({ version: 2, data: { books: [{ id: 'should_not_write', title: '不应写入' }], life: 'invalid' } })); } catch (e) { threw3 = true; }
+  ok(threw3, '部分损坏的备份未报错');
+  eq(JSON.stringify(S.list('books')), beforeAtomic, '校验失败前已部分覆盖记录');
 });
 t('F5 导入合法备份：恢复数据且不影响备份外模块', () => {
   const rb = S.save('books', { title: '备份恢复测试书' });
