@@ -30,27 +30,25 @@
 
 ```bash
 cp .env.example .env  # 仅作参考；server.js 读取进程环境变量
-WORKBENCH_ADMIN_EMAIL="you@example.com" \
-WORKBENCH_ADMIN_PASSWORD="a-long-unique-password" \
 WORKBENCH_SESSION_SECRET="at-least-32-random-characters" \
 WORKBENCH_DATA_DIR="$(pwd)/.data" \
 node server.js
 ```
 
-打开 `http://localhost:8797`。前后端同源时 `config.js` 保持 `apiBase: ''` 即可。
+打开 `http://localhost:8797`，进入「设置 → 账号与多设备同步 → 注册」创建唯一私人账号。注册成功后入口会关闭，其他设备使用同一账号登录。前后端同源时 `config.js` 保持 `apiBase: ''` 即可。
 
 ## 云端部署必需配置
 
 1. 使用支持长时运行 Node.js 进程的主机，启动命令为 `node server.js`。
 2. 挂载持久化磁盘，并将 `WORKBENCH_DATA_DIR` 指向该磁盘。不要使用会在重启时清空的临时目录。
 3. 在主机的秘密/环境变量中配置：
-   - `WORKBENCH_ADMIN_EMAIL`
-   - `WORKBENCH_ADMIN_PASSWORD`
    - `WORKBENCH_SESSION_SECRET`（至少 32 个随机字符）
    - `WORKBENCH_DATA_DIR`
    - `PORT` / `HOST`（按云主机要求）
 4. 必须使用 HTTPS，否则 PWA、Service Worker 和移动端文件能力不可靠。
 5. 如果前端与 API 分开部署：将 `config.js` 的 `apiBase` 改为 API HTTPS 根地址，并把前端精确 Origin 加入 `WORKBENCH_ALLOWED_ORIGINS`。
+
+兼容旧部署：已有 `WORKBENCH_ADMIN_EMAIL` / `WORKBENCH_ADMIN_PASSWORD` 会在首次启动时安全迁移为 `account.json`（仅保存加盐哈希），原记录和附件不变。新部署可以不配置这两个变量，直接在应用内完成首次注册。
 
 不要把真实 `.env`、密码、Session Secret 或持久化数据目录提交到 Git。
 

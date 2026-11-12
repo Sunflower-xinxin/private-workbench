@@ -119,7 +119,7 @@ function head(title, back, right) {
 }
 
 /* ---------- 全局 UI 状态 ---------- */
-const ui = { q: '', chip: {}, modEdit: false, enTab: '词汇', jobTab: '简历', pType: 'Prompt', pCat: '全部', trTab: 'gone' };
+const ui = { q: '', chip: {}, modEdit: false, enTab: '词汇', jobTab: '简历', pType: 'Prompt', pCat: '全部', trTab: 'gone', authMode: 'login' };
 
 function render() {
   const parts = (location.hash || '#/').slice(1).split('/').filter(Boolean);
@@ -1303,8 +1303,12 @@ function pgSettings() {
   <h5 class="gap">账号与多设备同步</h5><div class="group">
     ${cs.signedIn ? `<div class="row"><div class="r-main"><div class="r-title" style="font-size:15.5px">${esc(cs.email)}</div><div class="r-sub">${esc(syncText)}</div></div><span class="tag">已登录</span></div>
       ${ln('立即同步', '手机 · 电脑 · 附件', 'cloudSyncNow()')}${ln('退出登录', '', 'cloudLogout()')}` :
-      `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="current-password" placeholder="密码"><button onclick="cloudLogin()">登录并同步</button></div>
-      <p class="notice" style="margin:10px">登录后，记录、图片、音频和附件会与服务端合并，并在同一账号的其他设备上可用。</p>`}
+      `<div class="sync-auth-tabs" role="tablist" aria-label="账号操作"><button class="${ui.authMode === 'login' ? 'on' : ''}" onclick="setCloudAuthMode('login')">登录</button><button class="${ui.authMode === 'register' ? 'on' : ''}" onclick="setCloudAuthMode('register')">注册</button></div>
+      ${ui.authMode === 'register'
+        ? `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" enterkeyhint="next" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="new-password" enterkeyhint="next" placeholder="设置密码（至少 8 位）"><input id="cloudpassword2" type="password" autocomplete="new-password" enterkeyhint="done" placeholder="再次输入密码" onkeydown="if(event.key==='Enter')cloudRegister()"><button onclick="cloudRegister()">创建账号并同步</button></div>
+        <p class="notice" style="margin:10px">首次注册会创建这个工作台的唯一私人账号。创建后注册入口将关闭，其他设备请使用同一邮箱和密码登录。</p>`
+        : `<div class="sync-login"><input id="cloudemail" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" enterkeyhint="next" placeholder="账号邮箱"><input id="cloudpassword" type="password" autocomplete="current-password" enterkeyhint="done" placeholder="密码" onkeydown="if(event.key==='Enter')cloudLogin()"><button onclick="cloudLogin()">登录并同步</button></div>
+        <p class="notice" style="margin:10px">登录后，记录、图片、音频和附件会与服务端合并，并在同一账号的其他设备上可用。</p>`}`}
   </div>
   <h5 class="gap">备份与迁移</h5><div class="group">
     ${ln('导出全部数据', 'JSON · ' + total + ' 条记录', 'doExport()')}
@@ -1336,7 +1340,26 @@ async function cloudLogin() {
   const email = document.getElementById('cloudemail'), password = document.getElementById('cloudpassword');
   if (!email || !password || !email.value.trim() || !password.value) { toast('请输入邮箱和密码'); return; }
   try { toast('正在登录并合并数据…'); await S.cloud.login(email.value.trim(), password.value); render(); toast('登录成功，多设备数据已同步'); }
-  catch (e) { toast(e.message === 'invalid_credentials' ? '账号或密码错误' : '登录失败：' + e.message); }
+  catch (e) { toast(cloudAuthError(e, '登录')); }
+}
+function setCloudAuthMode(mode) { ui.authMode = mode === 'register' ? 'register' : 'login'; render(); }
+function cloudAuthError(error, action) {
+  const msg = error && error.message;
+  const known = {
+    invalid_credentials: '账号或密码错误', account_not_created: '尚未创建账号，请先切换到注册',
+    invalid_email: '请输入有效的邮箱地址', weak_password: '密码至少需要 8 位',
+    registration_closed: '私人账号已经创建，请直接登录', server_not_configured: '云同步服务尚未完成配置',
+    http_404: '云同步后端尚未部署，当前网页只能使用本地数据', http_405: '云同步后端尚未部署，当前网页只能使用本地数据'
+  };
+  return known[msg] || action + '失败：' + msg;
+}
+async function cloudRegister() {
+  const email = document.getElementById('cloudemail'), password = document.getElementById('cloudpassword'), confirm = document.getElementById('cloudpassword2');
+  if (!email || !password || !confirm || !email.value.trim() || !password.value || !confirm.value) { toast('请填写邮箱、密码和确认密码'); return; }
+  if (password.value.length < 8) { toast('密码至少需要 8 位'); return; }
+  if (password.value !== confirm.value) { toast('两次输入的密码不一致'); return; }
+  try { toast('正在创建私人账号…'); await S.cloud.register(email.value.trim(), password.value); render(); toast('注册成功，数据已开始同步'); }
+  catch (e) { toast(cloudAuthError(e, '注册')); }
 }
 async function cloudSyncNow() {
   try { toast('正在同步…'); await S.cloud.syncNow(); render(); toast('同步完成'); }

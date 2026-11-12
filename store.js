@@ -578,7 +578,7 @@ const cloud = {
     const headers = Object.assign({}, options && options.headers);
     if (this.token()) headers.Authorization = 'Bearer ' + this.token();
     const res = await global.fetch(this.apiBase() + pathname, Object.assign({}, options || {}, { headers }));
-    if (res.status === 401) { this.logout(); throw new Error('login_expired'); }
+    if (res.status === 401 && pathname !== '/api/login' && pathname !== '/api/register') { this.logout(); throw new Error('login_expired'); }
     if (!res.ok) {
       let reason = 'http_' + res.status;
       try { reason = (await res.json()).error || reason; } catch (_) {}
@@ -588,6 +588,18 @@ const cloud = {
   },
   async login(email, password) {
     const res = await this.request('/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    write('pw_cloud_token', data.token); write('pw_cloud_email', data.email);
+    this.lastError = ''; this.emit();
+    await this.queueReferencedAssets();
+    await this.syncNow();
+    return data;
+  },
+  async register(email, password) {
+    const res = await this.request('/api/register', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });

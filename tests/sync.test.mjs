@@ -10,9 +10,11 @@ const port = 18797;
 const base = `http://127.0.0.1:${port}`;
 const env = {
   ...process.env, PORT: String(port), HOST: '127.0.0.1', WORKBENCH_DATA_DIR: dataDir,
-  WORKBENCH_ADMIN_EMAIL: 'owner@example.com', WORKBENCH_ADMIN_PASSWORD: 'correct-horse-battery-staple',
+  WORKBENCH_ADMIN_EMAIL: '', WORKBENCH_ADMIN_PASSWORD: '',
   WORKBENCH_SESSION_SECRET: 'test-only-session-secret-at-least-32-characters'
 };
+const accountEmail = 'owner@example.com';
+const accountPassword = 'correct-horse-battery-staple';
 let child;
 
 function start() {
@@ -26,10 +28,15 @@ async function ready() {
   }
   throw new Error('server_start_timeout');
 }
-async function login(password = env.WORKBENCH_ADMIN_PASSWORD) {
+async function register(email = accountEmail, password = accountPassword) {
+  return fetch(base + '/api/register', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
+  });
+}
+async function login(password = accountPassword) {
   return fetch(base + '/api/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: env.WORKBENCH_ADMIN_EMAIL, password })
+    body: JSON.stringify({ email: accountEmail, password })
   });
 }
 async function sync(token, body) {
@@ -51,10 +58,18 @@ async function test(name, fn) {
 try {
   start(); await ready();
   console.log('== Cloud sync API integration ==\n');
+  await test('first-run registration validates input and creates the private account', async () => {
+    assert((await register('bad-email', accountPassword)).status === 400, 'invalid email was accepted');
+    const res = await register(); assert(res.status === 201, 'first registration failed');
+    const data = await res.json(); assert(data.token && data.email === accountEmail, 'registration response invalid');
+  });
+  await test('registration closes after the private account has been created', async () => {
+    assert((await register('another@example.com', 'another-secure-password')).status === 409, 'second account was accepted');
+  });
   await test('authentication rejects bad credentials and returns a signed token for the configured account', async () => {
     assert((await login('wrong-password')).status === 401, 'bad password was accepted');
     const res = await login(); assert(res.ok, 'valid login failed');
-    const data = await res.json(); assert(data.token && data.email === env.WORKBENCH_ADMIN_EMAIL, 'token response invalid');
+    const data = await res.json(); assert(data.token && data.email === accountEmail, 'token response invalid');
   });
   const auth = await (await login()).json();
   const token = auth.token;

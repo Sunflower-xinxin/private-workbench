@@ -1,7 +1,7 @@
 /*
  * Private Workbench server
  * - Serves the PWA from this repository (no Windows-only absolute paths)
- * - Provides one-account authentication, record sync and binary file storage
+ * - Provides first-run account registration, record sync and binary file storage
  * - Uses only Node.js built-ins so the project has no install step
  *
  * Production must provide a persistent WORKBENCH_DATA_DIR. Ephemeral disks will
@@ -21,6 +21,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const DATA_DIR = path.resolve(process.env.WORKBENCH_DATA_DIR || path.join(ROOT, '.data'));
 const FILE_DIR = path.join(DATA_DIR, 'files');
 const SNAPSHOT_FILE = path.join(DATA_DIR, 'snapshot.json');
+const ACCOUNT_FILE = path.join(DATA_DIR, 'account.json');
 const ADMIN_EMAIL = String(process.env.WORKBENCH_ADMIN_EMAIL || '').trim().toLowerCase();
 const ADMIN_PASSWORD = String(process.env.WORKBENCH_ADMIN_PASSWORD || '');
 const SESSION_SECRET = String(process.env.WORKBENCH_SESSION_SECRET || '');
@@ -35,16 +36,39 @@ const MIME = {
 };
 
 let snapshot = { version: 1, records: {}, deleted: {}, updatedAt: 0 };
+let account = null;
+let registrationInFlight = false;
 let saveChain = Promise.resolve();
 
 function b64url(value) { return Buffer.from(value).toString('base64url'); }
+function validEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254; }
+function passwordDigest(password, salt) {
+  return new Promise((resolve, reject) => crypto.scrypt(password, salt, 64, (err, key) => err ? reject(err) : resolve(key)));
+}
+async function makeAccount(email, password) {
+  const salt = crypto.randomBytes(16).toString('base64url');
+  const passwordHash = (await passwordDigest(password, salt)).toString('base64url');
+  return { version: 1, email, salt, passwordHash, createdAt: Date.now() };
+}
+async function persistAccount(next) {
+  const temp = ACCOUNT_FILE + '.tmp';
+  await fsp.writeFile(temp, JSON.stringify(next), { mode: 0o600 });
+  await fsp.rename(temp, ACCOUNT_FILE);
+  account = next;
+}
+async function passwordMatches(password) {
+  if (!account || !account.salt || !account.passwordHash) return false;
+  const actual = await passwordDigest(password, account.salt);
+  const expected = Buffer.from(account.passwordHash, 'base64url');
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+}
 function signToken(email) {
   const payload = b64url(JSON.stringify({ sub: email, exp: Date.now() + 30 * 86400000 }));
   const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
 function verifyToken(req) {
-  if (!SESSION_SECRET || !ADMIN_EMAIL) return false;
+  if (!SESSION_SECRET || !account) return false;
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   const [payload, sig] = token.split('.');
@@ -54,7 +78,7 @@ function verifyToken(req) {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data.sub === ADMIN_EMAIL && Number(data.exp) > Date.now();
+    return data.sub === account.email && Number(data.exp) > Date.now();
   } catch (_) { return false; }
 }
 
@@ -141,20 +165,34 @@ function safeFilePart(value) { return /^[a-zA-Z0-9_-]{6,160}$/.test(value || '')
 async function handleApi(req, res, url) {
   if (req.method === 'OPTIONS') { send(res, 204, '', corsHeaders(req)); return; }
   if (url.pathname === '/api/health' && req.method === 'GET') {
-    json(res, 200, { ok: true, configured: !!(ADMIN_EMAIL && ADMIN_PASSWORD && SESSION_SECRET) }, req); return;
+    json(res, 200, { ok: true, configured: !!(account && SESSION_SECRET), canRegister: !!(!account && SESSION_SECRET) }, req); return;
+  }
+  if (url.pathname === '/api/register' && req.method === 'POST') {
+    if (!SESSION_SECRET) { json(res, 503, { ok: false, error: 'server_not_configured' }, req); return; }
+    if (account || registrationInFlight) { json(res, 409, { ok: false, error: 'registration_closed' }, req); return; }
+    registrationInFlight = true;
+    try {
+      const body = await readJson(req, 64 * 1024);
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      if (!validEmail(email)) { json(res, 400, { ok: false, error: 'invalid_email' }, req); return; }
+      if (password.length < 8 || password.length > 200) { json(res, 400, { ok: false, error: 'weak_password' }, req); return; }
+      const next = await makeAccount(email, password);
+      await persistAccount(next);
+      json(res, 201, { ok: true, token: signToken(email), email }, req); return;
+    } finally { registrationInFlight = false; }
   }
   if (url.pathname === '/api/login' && req.method === 'POST') {
-    if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !SESSION_SECRET) {
+    if (!SESSION_SECRET) {
       json(res, 503, { ok: false, error: 'server_not_configured' }, req); return;
     }
+    if (!account) { json(res, 409, { ok: false, error: 'account_not_created' }, req); return; }
     const body = await readJson(req, 64 * 1024);
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
     const emailHash = crypto.createHash('sha256').update(email).digest();
-    const expectedEmailHash = crypto.createHash('sha256').update(ADMIN_EMAIL).digest();
-    const passwordHash = crypto.createHash('sha256').update(password).digest();
-    const expectedHash = crypto.createHash('sha256').update(ADMIN_PASSWORD).digest();
-    if (!crypto.timingSafeEqual(emailHash, expectedEmailHash) || !crypto.timingSafeEqual(passwordHash, expectedHash)) {
+    const expectedEmailHash = crypto.createHash('sha256').update(account.email).digest();
+    if (!crypto.timingSafeEqual(emailHash, expectedEmailHash) || !(await passwordMatches(password))) {
       json(res, 401, { ok: false, error: 'invalid_credentials' }, req); return;
     }
     json(res, 200, { ok: true, token: signToken(email), email }, req); return;
@@ -213,6 +251,14 @@ async function serveStatic(req, res, url) {
 
 async function start() {
   await fsp.mkdir(FILE_DIR, { recursive: true, mode: 0o700 });
+  try {
+    const saved = JSON.parse(await fsp.readFile(ACCOUNT_FILE, 'utf8'));
+    if (!saved || !validEmail(saved.email) || !saved.salt || !saved.passwordHash) throw new Error('invalid_account_file');
+    account = saved;
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+  }
+  if (!account && ADMIN_EMAIL && ADMIN_PASSWORD) await persistAccount(await makeAccount(ADMIN_EMAIL, ADMIN_PASSWORD));
   try { snapshot = normalizeSnapshot(JSON.parse(await fsp.readFile(SNAPSHOT_FILE, 'utf8'))); }
   catch (_) { snapshot = normalizeSnapshot({}); }
   const server = http.createServer((req, res) => {
@@ -225,7 +271,8 @@ async function start() {
   });
   server.listen(PORT, HOST, () => {
     console.log(`Private Workbench listening on http://${HOST}:${PORT}`);
-    if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !SESSION_SECRET) console.warn('Cloud sync is disabled: configure WORKBENCH_ADMIN_EMAIL, WORKBENCH_ADMIN_PASSWORD and WORKBENCH_SESSION_SECRET.');
+    if (!SESSION_SECRET) console.warn('Cloud sync is disabled: configure WORKBENCH_SESSION_SECRET.');
+    else if (!account) console.warn('No account exists yet: use the Settings registration form to create the private account.');
   });
 }
 
